@@ -7,7 +7,20 @@ html2canvas
 
 #### Notice ####
 
-Modified for use within DGLogik. If you want to use it or expand on it compared to the normal html2canvas, go ahead. Perhaps you could message me (mbullington) on Freenode, and we could get a viable fork going. I'll try to fix bugs and issues, but it's not a huge priority.
+Modified for use within DGLogik. If you want to use it or expand on it compared to the normal html2canvas, go ahead. Support for this version of html2canvas is not guarenteed outside of DGLogik, use this at your own risk.
+
+All below documentation should still be accurate. Here's a rather incomplete list of what this modified version supports that the upstream version does not:
+
+- Fix some bugs with the text-shadow property.
+- Fixed overflow issue with border-radius property.
+- Allowed linear-gradient to be specified in degrees.
+- Partially implement radial-gradient property, supports positioned elliptic and radial gradients.
+- Implement box-shadow property.
+- Integrated a modified version of canvg into html2canvas as SVGParser.
+- Fix issues with SVG overflow and other positioning issues.
+- Allow for specifing width and height in html2canvas's options.
+- Better support for iframes, element can now be of a different document.
+- html2canvas function now accepts HTML as a String, and will parse it correctly inside a hidden iframe.
 
 #### JavaScript HTML renderer ####
 
