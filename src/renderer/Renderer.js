@@ -1,11 +1,10 @@
 var log = require('../log');
 
-function Renderer(width, height, images, options, document) {
+function Renderer(width, height, images, options) {
   this.width = width;
   this.height = height;
   this.images = images;
   this.options = options;
-  this.document = document;
 }
 
 Renderer.prototype.renderImage = function(container, bounds, borderData, imageContainer) {

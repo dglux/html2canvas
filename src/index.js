@@ -57,7 +57,11 @@ function html2canvas(nodeList, options) {
     });
   }
 
-  var node = ((nodeList === undefined) ? [document.documentElement] : ((nodeList.length) ? nodeList : [nodeList]))[0];
+  var node = document.documentElement[0];
+
+  if (nodeList) {
+    node = (nodeList.length) ? nodeList[0] : nodeList;
+  }
 
   function getWidth() {
     var children = Array.prototype.slice.call(node.ownerDocument.body.childNodes).map(function(child) {
@@ -141,7 +145,7 @@ function renderWindow(node, container, options, windowWidth, windowHeight) {
   var bounds = getBounds(node);
   var width = options.type === "view" ? windowWidth : documentWidth(clonedWindow.document);
   var height = options.type === "view" ? windowHeight : documentHeight(clonedWindow.document);
-  var renderer = new options.renderer(width, height, imageLoader, options, options.document || document);
+  var renderer = new options.renderer(width, height, imageLoader, options);
   var parser = new NodeParser(node, renderer, support, imageLoader, options);
   return parser.ready.then(function() {
     log("Finished rendering");

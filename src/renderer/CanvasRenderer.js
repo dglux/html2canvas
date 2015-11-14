@@ -3,15 +3,15 @@ var LinearGradientContainer = require('../gradient/LinearGradientContainer');
 var RadialGradientContainer = require('../gradient/RadialGradientContainer');
 var log = require('../log');
 
-function CanvasRenderer(width, height, imageLoader, options, doc) {
+function CanvasRenderer(width, height, imageLoader, options) {
   Renderer.apply(this, arguments);
-  this.canvas = this.options.canvas || doc.createElement("canvas");
+  this.canvas = this.options.canvas || document.createElement("canvas");
   if(!this.options.canvas) {
     this.canvas.width = width;
     this.canvas.height = height;
   }
   this.ctx = this.canvas.getContext("2d");
-  this.taintCtx = this.document.createElement("canvas").getContext("2d");
+  this.taintCtx = document.createElement("canvas").getContext("2d");
   this.ctx.textBaseline = "bottom";
   this.variables = {};
   this.transforms = {};
