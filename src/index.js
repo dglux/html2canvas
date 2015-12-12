@@ -48,7 +48,10 @@ function html2canvas(nodeList, options) {
       frame.onload = function() {
         var framedoc = frame.contentDocument || frame.contentWindow.document;
 
-        html2canvas(framedoc.documentElement).then(function(canvas) {
+        html2canvas(framedoc.documentElement, {
+          width: options.width,
+          height: options.height
+        }).then(function(canvas) {
           document.body.removeChild(frame);
           URL.revokeObjectURL(src);
           complete(canvas);
