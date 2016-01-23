@@ -13,8 +13,16 @@
  * Copyright (c) 2012 Niklas von Hertzen
  * Licensed under the MIT license.
  */
-(function(chars){
+(function(){
   "use strict";
+
+  var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  // Use a lookup table to find the index.
+  var lookup = new Uint8Array(256);
+  for (var i = 0; i < chars.length; i++) {
+    lookup[chars.charCodeAt(i)] = i;
+  }
 
   exports.encode = function(arraybuffer) {
     var bytes = new Uint8Array(arraybuffer),
@@ -52,10 +60,10 @@
     bytes = new Uint8Array(arraybuffer);
 
     for (i = 0; i < len; i+=4) {
-      encoded1 = chars.indexOf(base64[i]);
-      encoded2 = chars.indexOf(base64[i+1]);
-      encoded3 = chars.indexOf(base64[i+2]);
-      encoded4 = chars.indexOf(base64[i+3]);
+      encoded1 = lookup[base64.charCodeAt(i)];
+      encoded2 = lookup[base64.charCodeAt(i+1)];
+      encoded3 = lookup[base64.charCodeAt(i+2)];
+      encoded4 = lookup[base64.charCodeAt(i+3)];
 
       bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
       bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
@@ -64,7 +72,7 @@
 
     return arraybuffer;
   };
-})("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
+})();
 
 },{}],2:[function(require,module,exports){
 (function (process,global){
@@ -73,7 +81,7 @@
  * @copyright Copyright (c) 2014 Yehuda Katz, Tom Dale, Stefan Penner and contributors (Conversion to ES6 API by Jake Archibald)
  * @license   Licensed under MIT license
  *            See https://raw.githubusercontent.com/jakearchibald/es6-promise/master/LICENSE
- * @version   2.1.1
+ * @version   2.3.0
  */
 
 (function() {
@@ -103,7 +111,9 @@
     var lib$es6$promise$asap$$len = 0;
     var lib$es6$promise$asap$$toString = {}.toString;
     var lib$es6$promise$asap$$vertxNext;
-    function lib$es6$promise$asap$$asap(callback, arg) {
+    var lib$es6$promise$asap$$customSchedulerFn;
+
+    var lib$es6$promise$asap$$asap = function asap(callback, arg) {
       lib$es6$promise$asap$$queue[lib$es6$promise$asap$$len] = callback;
       lib$es6$promise$asap$$queue[lib$es6$promise$asap$$len + 1] = arg;
       lib$es6$promise$asap$$len += 2;
@@ -111,11 +121,21 @@
         // If len is 2, that means that we need to schedule an async flush.
         // If additional callbacks are queued before the queue is flushed, they
         // will be processed by this flush that we are scheduling.
-        lib$es6$promise$asap$$scheduleFlush();
+        if (lib$es6$promise$asap$$customSchedulerFn) {
+          lib$es6$promise$asap$$customSchedulerFn(lib$es6$promise$asap$$flush);
+        } else {
+          lib$es6$promise$asap$$scheduleFlush();
+        }
       }
     }
 
-    var lib$es6$promise$asap$$default = lib$es6$promise$asap$$asap;
+    function lib$es6$promise$asap$$setScheduler(scheduleFn) {
+      lib$es6$promise$asap$$customSchedulerFn = scheduleFn;
+    }
+
+    function lib$es6$promise$asap$$setAsap(asapFn) {
+      lib$es6$promise$asap$$asap = asapFn;
+    }
 
     var lib$es6$promise$asap$$browserWindow = (typeof window !== 'undefined') ? window : undefined;
     var lib$es6$promise$asap$$browserGlobal = lib$es6$promise$asap$$browserWindow || {};
@@ -248,7 +268,7 @@
     }
 
     function lib$es6$promise$$internal$$handleForeignThenable(promise, thenable, then) {
-       lib$es6$promise$asap$$default(function(promise) {
+       lib$es6$promise$asap$$asap(function(promise) {
         var sealed = false;
         var error = lib$es6$promise$$internal$$tryThen(then, thenable, function(value) {
           if (sealed) { return; }
@@ -329,7 +349,7 @@
       promise._state = lib$es6$promise$$internal$$FULFILLED;
 
       if (promise._subscribers.length !== 0) {
-        lib$es6$promise$asap$$default(lib$es6$promise$$internal$$publish, promise);
+        lib$es6$promise$asap$$asap(lib$es6$promise$$internal$$publish, promise);
       }
     }
 
@@ -338,7 +358,7 @@
       promise._state = lib$es6$promise$$internal$$REJECTED;
       promise._result = reason;
 
-      lib$es6$promise$asap$$default(lib$es6$promise$$internal$$publishRejection, promise);
+      lib$es6$promise$asap$$asap(lib$es6$promise$$internal$$publishRejection, promise);
     }
 
     function lib$es6$promise$$internal$$subscribe(parent, child, onFulfillment, onRejection) {
@@ -352,7 +372,7 @@
       subscribers[length + lib$es6$promise$$internal$$REJECTED]  = onRejection;
 
       if (length === 0 && parent._state) {
-        lib$es6$promise$asap$$default(lib$es6$promise$$internal$$publish, parent);
+        lib$es6$promise$asap$$asap(lib$es6$promise$$internal$$publish, parent);
       }
     }
 
@@ -609,7 +629,7 @@
     /**
       Promise objects represent the eventual result of an asynchronous operation. The
       primary way of interacting with a promise is through its `then` method, which
-      registers callbacks to receive either a promise’s eventual value or the reason
+      registers callbacks to receive either a promise's eventual value or the reason
       why the promise cannot be fulfilled.
 
       Terminology
@@ -732,6 +752,9 @@
     lib$es6$promise$promise$$Promise.race = lib$es6$promise$promise$race$$default;
     lib$es6$promise$promise$$Promise.resolve = lib$es6$promise$promise$resolve$$default;
     lib$es6$promise$promise$$Promise.reject = lib$es6$promise$promise$reject$$default;
+    lib$es6$promise$promise$$Promise._setScheduler = lib$es6$promise$asap$$setScheduler;
+    lib$es6$promise$promise$$Promise._setAsap = lib$es6$promise$asap$$setAsap;
+    lib$es6$promise$promise$$Promise._asap = lib$es6$promise$asap$$asap;
 
     lib$es6$promise$promise$$Promise.prototype = {
       constructor: lib$es6$promise$promise$$Promise,
@@ -942,7 +965,7 @@
 
         if (state) {
           var callback = arguments[state - 1];
-          lib$es6$promise$asap$$default(function(){
+          lib$es6$promise$asap$$asap(function(){
             lib$es6$promise$$internal$$invokeCallback(state, child, callback, result);
           });
         } else {
@@ -1060,7 +1083,9 @@ function drainQueue() {
         currentQueue = queue;
         queue = [];
         while (++queueIndex < len) {
-            currentQueue[queueIndex].run();
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
         }
         queueIndex = -1;
         len = queue.length;
@@ -1112,7 +1137,6 @@ process.binding = function (name) {
     throw new Error('process.binding is not supported');
 };
 
-// TODO(shtylman)
 process.cwd = function () { return '/' };
 process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
@@ -1121,7 +1145,7 @@ process.umask = function() { return 0; };
 
 },{}],4:[function(require,module,exports){
 (function (global){
-/*! https://mths.be/punycode v1.3.2 by @mathias */
+/*! https://mths.be/punycode v1.4.0 by @mathias */
 ;(function(root) {
 
 	/** Detect free variables */
@@ -1187,7 +1211,7 @@ process.umask = function() { return 0; };
 	 * @returns {Error} Throws a `RangeError` with the applicable error message.
 	 */
 	function error(type) {
-		throw RangeError(errors[type]);
+		throw new RangeError(errors[type]);
 	}
 
 	/**
@@ -1334,7 +1358,7 @@ process.umask = function() { return 0; };
 
 	/**
 	 * Bias adaptation function as per section 3.4 of RFC 3492.
-	 * http://tools.ietf.org/html/rfc3492#section-3.4
+	 * https://tools.ietf.org/html/rfc3492#section-3.4
 	 * @private
 	 */
 	function adapt(delta, numPoints, firstTime) {
@@ -1639,14 +1663,17 @@ process.umask = function() { return 0; };
 			return punycode;
 		});
 	} else if (freeExports && freeModule) {
-		if (module.exports == freeExports) { // in Node.js or RingoJS v0.8.0+
+		if (module.exports == freeExports) {
+			// in Node.js, io.js, or RingoJS v0.8.0+
 			freeModule.exports = punycode;
-		} else { // in Narwhal or RingoJS v0.7.0-
+		} else {
+			// in Narwhal or RingoJS v0.7.0-
 			for (key in punycode) {
 				punycode.hasOwnProperty(key) && (freeExports[key] = punycode[key]);
 			}
 		}
-	} else { // in Rhino or a web browser
+	} else {
+		// in Rhino or a web browser
 		root.punycode = punycode;
 	}
 
