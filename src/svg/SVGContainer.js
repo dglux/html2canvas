@@ -26,8 +26,8 @@ function SVGContainer(src) {
             resolve();
           }.bind(this)
         });
-      });
-    });
+      }.bind(this));
+    }.bind(this));
 }
 
 SVGContainer.prototype.inlineFormatting = function(src) {

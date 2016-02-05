@@ -1,6 +1,6 @@
 /*
   html2canvas 0.5.0-alpha2 <http://html2canvas.hertzen.com>
-  Copyright (c) 2015 Niklas von Hertzen
+  Copyright (c) 2016 Niklas von Hertzen
 
   Released under MIT License
 */
@@ -2621,7 +2621,6 @@ ImageLoader.prototype.hasImageBackground = function(imageData) {
 ImageLoader.prototype.loadImage = function(imageData, container) {
   if(imageData.method === "url") {
     var src = imageData.args[0];
-    console.log(src);
     if(this.isSVG(src) && !this.options.allowTaint) {
       return new SVGContainer(src);
     } else if(src.match(/data:image\/.*;base64,/i)) {
@@ -2771,7 +2770,7 @@ function html2canvas(nodeList, options) {
       frame.onload = function() {
         var framedoc = frame.contentDocument || frame.contentWindow.document;
 
-        html2canvas(framedoc.documentElement).then(function(canvas) {
+        html2canvas(framedoc.documentElement, options).then(function(canvas) {
           document.body.removeChild(frame);
           URL.revokeObjectURL(src);
           complete(canvas);
@@ -4913,8 +4912,8 @@ function SVGContainer(src) {
             resolve();
           }.bind(this)
         });
-      });
-    });
+      }.bind(this));
+    }.bind(this));
 }
 
 SVGContainer.prototype.inlineFormatting = function(src) {
