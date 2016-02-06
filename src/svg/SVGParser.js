@@ -2959,6 +2959,14 @@ function build(opts) {
   }
 
   svg.loadXmlDoc = function(ctx, dom) {
+    if(dom.nodeName !== 'svg') {
+      if(dom.children.length > 0 || dom.children[0].nodeName !== 'svg') {
+        dom = dom.children[0];
+      } else {
+        throw new Error("ERROR: File missing SVG declaration");
+      }
+    }
+
     svg.init(ctx);
 
     var e = svg.CreateElement(dom);
@@ -2988,6 +2996,7 @@ function build(opts) {
         cWidth = e.style('width').toPixels('x');
         cHeight = e.style('height').toPixels('y');
       }
+
       svg.ViewPort.SetCurrent(cWidth, cHeight);
 
       if(svg.opts['offsetX'] != null) e.attribute('x', true).value = svg.opts['offsetX'];
