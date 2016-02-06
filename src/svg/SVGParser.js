@@ -2490,6 +2490,19 @@ function build(opts) {
       }.bind(this));
     }
 
+    this.drawSvg = function(ctx, dx, dy, dw, dh) {
+      module.exports.parse(ctx.canvas, this.img, {
+        ignoreMouse: true,
+        ignoreAnimation: true,
+        ignoreDimensions: true,
+        ignoreClear: true,
+        offsetX: dx,
+        offsetY: dy,
+        scaleWidth: dw,
+        scaleHeight: dh
+      });
+    };
+
     this.renderChildren = function(ctx) {
       var x = this.attribute('x').toPixels('x');
       var y = this.attribute('y').toPixels('y');
@@ -2500,7 +2513,7 @@ function build(opts) {
 
       ctx.save();
       if(isSvg) {
-        ctx.drawSvg(this.img, x, y, width, height);
+        this.drawSvg(ctx, x, y, width, height);
       }
       else {
         ctx.translate(x, y);
@@ -2977,7 +2990,10 @@ function build(opts) {
     var isFirstRender = true;
     var draw = function() {
       svg.ViewPort.Clear();
-      if(ctx.canvas.parentNode) svg.ViewPort.SetCurrent(ctx.canvas.parentNode.clientWidth, ctx.canvas.parentNode.clientHeight);
+      if(ctx.canvas.parentNode)
+        svg.ViewPort.SetCurrent(ctx.canvas.parentNode.clientWidth, ctx.canvas.parentNode.clientHeight);
+      else if(dom.parentNode)
+        svg.ViewPort.SetCurrent(dom.parentNode.clientWidth, dom.parentNode.clientHeight);
 
       if(svg.opts['ignoreDimensions'] != true) {
         // set canvas size

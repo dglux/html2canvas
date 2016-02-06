@@ -68,11 +68,12 @@ Renderer.prototype.renderBackgroundImage = function(container, bounds, borderDat
       case "linear-gradient":
       case "radial-gradient":
       case "gradient":
-        var gradientImage = this.images.get(backgroundImage.value);
+        var srcStr = JSON.stringify([backgroundImage.value, bounds]);
+        var gradientImage = this.images.get(srcStr);
         if(gradientImage) {
           this.renderBackgroundGradient(gradientImage, bounds, borderData);
         } else {
-          log("Error loading background-image", backgroundImage.args[0]);
+          log("Error loading background-image", srcStr);
         }
         break;
       case "none":

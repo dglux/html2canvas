@@ -1,13 +1,13 @@
 var Promise = require('../promise');
 
-function GradientContainer(imageData) {
-  this.src = imageData.value;
+function GradientContainer(imageData, container, bounds) {
+  this.src = JSON.stringify([imageData.value, bounds]);
   this.colorStops = [];
   this.type = null;
-  this.x0 = 0.5;
-  this.y0 = 0.5;
-  this.x1 = 0.5;
-  this.y1 = 0.5;
+  this.x0 = bounds.width / 2;
+  this.y0 = bounds.height / 2;
+  this.x1 = this.x0;
+  this.y1 = this.y0;
   this.promise = Promise.resolve(true);
 }
 

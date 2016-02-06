@@ -2,7 +2,8 @@ var GradientContainer = require('./GradientContainer');
 var Color = require('../color');
 
 function RadialGradientContainer(imageData, container) {
-  GradientContainer.apply(this, arguments);
+  var bounds = container.parseBounds();
+  GradientContainer.call(this, imageData, container, bounds);
   this.type = this.TYPES.RADIAL;
 
   var args = imageData.args;
@@ -13,8 +14,6 @@ function RadialGradientContainer(imageData, container) {
     if(imageData.prefix === '-webkit-' && imageData.args.length > 1 && imageData.args[1].indexOf(this.stepRegExp) === -1) {
       args = [imageData.args[1] + ' at ' + imageData.args[0]].concat(imageData.args.slice(2));
     }
-
-    var bounds = container.parseBounds();
 
     var direction = args[0].split('at')[0];
     var at = args[0].split('at')[1] || '';

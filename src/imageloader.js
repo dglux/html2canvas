@@ -80,7 +80,7 @@ ImageLoader.prototype.loadImage = function(imageData, container) {
   } else if(imageData.method === "radial-gradient") {
     return new RadialGradientContainer(imageData, container);
   } else if(imageData.method === "gradient") {
-    return new WebkitGradientContainer(imageData);
+    return new WebkitGradientContainer(imageData, container);
   } else if(imageData.method === "svg") {
     return new SVGNodeContainer(imageData.args[0]);
   } else if(imageData.method === "IFRAME") {

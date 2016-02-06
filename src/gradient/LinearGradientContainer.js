@@ -2,31 +2,27 @@ var GradientContainer = require('./GradientContainer');
 var Color = require('../color');
 
 function LinearGradientContainer(imageData, container) {
-  GradientContainer.apply(this, arguments);
+  var bounds = container.parseBounds();
+  GradientContainer.call(this, imageData, container, bounds);
   this.type = this.TYPES.LINEAR;
 
-  var bounds = container.parseBounds();
   var hasDirection = imageData.args[0].indexOf(this.stepRegExp) === -1;
 
   if(hasDirection) {
     imageData.args[0].split(" ").reverse().forEach(function(position) {
       switch(position) {
-        case "0deg":
         case "left":
           this.x0 = 0;
           this.x1 = bounds.width;
           break;
-        case "90deg":
         case "top":
           this.y0 = 0;
           this.y1 = bounds.height;
           break;
-        case "180deg":
         case "right":
           this.x0 = bounds.width;
           this.x1 = 0;
           break;
-        case "270deg":
         case "bottom":
           this.y0 = bounds.height;
           this.y1 = 0;
@@ -51,6 +47,34 @@ function LinearGradientContainer(imageData, container) {
             deg = deg % 360;
             while(deg < 0) {
               deg += 360;
+            }
+
+            if(deg % 90 === 0) {
+              if(!deg) {
+                // bottom
+                this.y0 = bounds.height;
+                this.y1 = 0;
+              }
+
+              if(deg === 90) {
+                // left
+                this.x0 = 0;
+                this.x1 = bounds.width;
+              }
+
+              if(deg === 180) {
+                // top
+                this.y0 = 0;
+                this.y1 = bounds.height;
+              }
+
+              if(deg === 270) {
+                // right
+                this.x0 = bounds.width;
+                this.x1 = 0;
+              }
+
+              break;
             }
 
             var slope = Math.tan((90 - deg) * (Math.PI / 180));

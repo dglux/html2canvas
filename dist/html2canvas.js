@@ -2277,14 +2277,14 @@ module.exports = FrameContainer;
 },{"./":18,"./promise":22,"./proxy":23,"./utils":34}],12:[function(require,module,exports){
 var Promise = require('../promise');
 
-function GradientContainer(imageData) {
-  this.src = imageData.value;
+function GradientContainer(imageData, container, bounds) {
+  this.src = JSON.stringify([imageData.value, bounds]);
   this.colorStops = [];
   this.type = null;
-  this.x0 = 0.5;
-  this.y0 = 0.5;
-  this.x1 = 0.5;
-  this.y1 = 0.5;
+  this.x0 = bounds.width / 2;
+  this.y0 = bounds.height / 2;
+  this.x1 = this.x0;
+  this.y1 = this.y0;
   this.promise = Promise.resolve(true);
 }
 
@@ -2300,31 +2300,27 @@ var GradientContainer = require('./GradientContainer');
 var Color = require('../color');
 
 function LinearGradientContainer(imageData, container) {
-  GradientContainer.apply(this, arguments);
+  var bounds = container.parseBounds();
+  GradientContainer.call(this, imageData, container, bounds);
   this.type = this.TYPES.LINEAR;
 
-  var bounds = container.parseBounds();
   var hasDirection = imageData.args[0].indexOf(this.stepRegExp) === -1;
 
   if(hasDirection) {
     imageData.args[0].split(" ").reverse().forEach(function(position) {
       switch(position) {
-        case "0deg":
         case "left":
           this.x0 = 0;
           this.x1 = bounds.width;
           break;
-        case "90deg":
         case "top":
           this.y0 = 0;
           this.y1 = bounds.height;
           break;
-        case "180deg":
         case "right":
           this.x0 = bounds.width;
           this.x1 = 0;
           break;
-        case "270deg":
         case "bottom":
           this.y0 = bounds.height;
           this.y1 = 0;
@@ -2349,6 +2345,34 @@ function LinearGradientContainer(imageData, container) {
             deg = deg % 360;
             while(deg < 0) {
               deg += 360;
+            }
+
+            if(deg % 90 === 0) {
+              if(!deg) {
+                // bottom
+                this.y0 = bounds.height;
+                this.y1 = 0;
+              }
+
+              if(deg === 90) {
+                // left
+                this.x0 = 0;
+                this.x1 = bounds.width;
+              }
+
+              if(deg === 180) {
+                // top
+                this.y0 = 0;
+                this.y1 = bounds.height;
+              }
+
+              if(deg === 270) {
+                // right
+                this.x0 = bounds.width;
+                this.x1 = 0;
+              }
+
+              break;
             }
 
             var slope = Math.tan((90 - deg) * (Math.PI / 180));
@@ -2427,7 +2451,8 @@ var GradientContainer = require('./GradientContainer');
 var Color = require('../color');
 
 function RadialGradientContainer(imageData, container) {
-  GradientContainer.apply(this, arguments);
+  var bounds = container.parseBounds();
+  GradientContainer.call(this, imageData, container, bounds);
   this.type = this.TYPES.RADIAL;
 
   var args = imageData.args;
@@ -2438,8 +2463,6 @@ function RadialGradientContainer(imageData, container) {
     if(imageData.prefix === '-webkit-' && imageData.args.length > 1 && imageData.args[1].indexOf(this.stepRegExp) === -1) {
       args = [imageData.args[1] + ' at ' + imageData.args[0]].concat(imageData.args.slice(2));
     }
-
-    var bounds = container.parseBounds();
 
     var direction = args[0].split('at')[0];
     var at = args[0].split('at')[1] || '';
@@ -2551,8 +2574,8 @@ module.exports = RadialGradientContainer;
 },{"../color":7,"./GradientContainer":12}],15:[function(require,module,exports){
 var GradientContainer = require('./GradientContainer');
 
-function WebkitGradientContainer(imageData) {
-  GradientContainer.apply(this, arguments);
+function WebkitGradientContainer(imageData, container) {
+  GradientContainer.call(this, imageData, container, container.parseBounds());
   this.type = (imageData.args[0] === "linear") ? this.TYPES.LINEAR : this.TYPES.RADIAL;
 }
 
@@ -2666,7 +2689,7 @@ ImageLoader.prototype.loadImage = function(imageData, container) {
   } else if(imageData.method === "radial-gradient") {
     return new RadialGradientContainer(imageData, container);
   } else if(imageData.method === "gradient") {
-    return new WebkitGradientContainer(imageData);
+    return new WebkitGradientContainer(imageData, container);
   } else if(imageData.method === "svg") {
     return new SVGNodeContainer(imageData.args[0]);
   } else if(imageData.method === "IFRAME") {
@@ -4674,6 +4697,12 @@ CanvasRenderer.prototype.renderBackgroundRepeat = function(imageContainer, backg
 CanvasRenderer.prototype.renderBackgroundGradient = function(gradientImage, bounds) {
   var gradient;
   if(gradientImage instanceof LinearGradientContainer) {
+    console.log(bounds.height);
+    console.log("gradient" + gradientImage.y1 + ": ");
+    console.log([gradientImage,bounds.x + gradientImage.x0,
+    bounds.y + gradientImage.y0,
+    bounds.x + gradientImage.x1,
+    bounds.y + gradientImage.y1]);
     gradient = this.ctx.createLinearGradient(
       bounds.x + gradientImage.x0,
       bounds.y + gradientImage.y0,
@@ -4810,11 +4839,12 @@ Renderer.prototype.renderBackgroundImage = function(container, bounds, borderDat
       case "linear-gradient":
       case "radial-gradient":
       case "gradient":
-        var gradientImage = this.images.get(backgroundImage.value);
+        var srcStr = JSON.stringify([backgroundImage.value, bounds]);
+        var gradientImage = this.images.get(srcStr);
         if(gradientImage) {
           this.renderBackgroundGradient(gradientImage, bounds, borderData);
         } else {
-          log("Error loading background-image", backgroundImage.args[0]);
+          log("Error loading background-image", srcStr);
         }
         break;
       case "none":
@@ -4970,6 +5000,7 @@ var utils = require('../utils');
 function SVGNodeContainer(node) {
   this.src = node;
   this.image = document.createElement('canvas');
+  this.bb = null;
   var self = this;
 
   this.getBounds = function(bounds) {
@@ -4979,7 +5010,7 @@ function SVGNodeContainer(node) {
     bounds.y2 = bounds.y1 + this.bb.height;
 
     return bounds;
-  };
+  }.bind(this);
 
   this.promise = new Promise(function(resolve, reject) {
     SVGParser.parse(this.image, node, {
@@ -7488,6 +7519,19 @@ function build(opts) {
       }.bind(this));
     }
 
+    this.drawSvg = function(ctx, dx, dy, dw, dh) {
+      module.exports.parse(ctx.canvas, this.img, {
+        ignoreMouse: true,
+        ignoreAnimation: true,
+        ignoreDimensions: true,
+        ignoreClear: true,
+        offsetX: dx,
+        offsetY: dy,
+        scaleWidth: dw,
+        scaleHeight: dh
+      });
+    };
+
     this.renderChildren = function(ctx) {
       var x = this.attribute('x').toPixels('x');
       var y = this.attribute('y').toPixels('y');
@@ -7498,7 +7542,7 @@ function build(opts) {
 
       ctx.save();
       if(isSvg) {
-        ctx.drawSvg(this.img, x, y, width, height);
+        this.drawSvg(ctx, x, y, width, height);
       }
       else {
         ctx.translate(x, y);
@@ -7975,7 +8019,10 @@ function build(opts) {
     var isFirstRender = true;
     var draw = function() {
       svg.ViewPort.Clear();
-      if(ctx.canvas.parentNode) svg.ViewPort.SetCurrent(ctx.canvas.parentNode.clientWidth, ctx.canvas.parentNode.clientHeight);
+      if(ctx.canvas.parentNode)
+        svg.ViewPort.SetCurrent(ctx.canvas.parentNode.clientWidth, ctx.canvas.parentNode.clientHeight);
+      else if(dom.parentNode)
+        svg.ViewPort.SetCurrent(dom.parentNode.clientWidth, dom.parentNode.clientHeight);
 
       if(svg.opts['ignoreDimensions'] != true) {
         // set canvas size

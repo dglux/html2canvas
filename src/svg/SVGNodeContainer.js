@@ -6,6 +6,7 @@ var utils = require('../utils');
 function SVGNodeContainer(node) {
   this.src = node;
   this.image = document.createElement('canvas');
+  this.bb = null;
   var self = this;
 
   this.getBounds = function(bounds) {
@@ -15,7 +16,7 @@ function SVGNodeContainer(node) {
     bounds.y2 = bounds.y1 + this.bb.height;
 
     return bounds;
-  };
+  }.bind(this);
 
   this.promise = new Promise(function(resolve, reject) {
     SVGParser.parse(this.image, node, {
