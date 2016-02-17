@@ -1737,17 +1737,12 @@ function build(opts) {
       if(this.attribute('x').hasValue() && this.attribute('y').hasValue()) {
         cctx.translate(this.attribute('x').toPixels('x', true), this.attribute('y').toPixels('y', true));
       }
-      // render 3x3 grid so when we transform there's no white space on edges
-      for(var x = -1; x <= 1; x++) {
-        for(var y = -1; y <= 1; y++) {
-          cctx.save();
-          cctx.translate(x * c.width, y * c.height);
-          svg.CanvasBoundingBox.freeze = true;
-          tempSvg.render(cctx);
-          svg.CanvasBoundingBox.freeze = false;
-          cctx.restore();
-        }
-      }
+
+
+      svg.CanvasBoundingBox.freeze = true;
+      tempSvg.render(cctx);
+      svg.CanvasBoundingBox.freeze = false;
+
       var pattern = ctx.createPattern(c, 'repeat');
       return pattern;
     }
@@ -1850,12 +1845,12 @@ function build(opts) {
 
         svg.CanvasBoundingBox.freeze = true;
 
-        var x = bb.x1 - (bb.x2 - bb.x1) / 2;
-        var y = bb.y1 - (bb.y2 - bb.y1) / 2;
+        var x = bb.x1 + (bb.x2 - bb.x1) / 2;
+        var y = bb.y1 + (bb.y2 - bb.y1) / 2;
 
-        tempCtx.translate(-x, -y);
-        transform.apply(tempCtx);
         tempCtx.translate(x, y);
+        transform.apply(tempCtx);
+        tempCtx.translate(-x, -y);
         tempCtx.fillRect(-svg.MAX_VIRTUAL_PIXELS / 3.0, -svg.MAX_VIRTUAL_PIXELS / 3.0, svg.MAX_VIRTUAL_PIXELS, svg.MAX_VIRTUAL_PIXELS);
         svg.CanvasBoundingBox.freeze = false;
 
@@ -2457,6 +2452,7 @@ function build(opts) {
       }
       var self = this;
       this.img.onload = function() {
+        console.log(href);
         self.loaded = true;
       }
       this.img.onerror = function() {
@@ -2473,16 +2469,20 @@ function build(opts) {
     }
 
     this.drawSvg = function(ctx, dx, dy, dw, dh) {
-      module.exports.parse(ctx.canvas, this.img, {
+      var c = document.createElement('canvas');
+      c.width = dw;
+      c.height = dh;
+
+      module.exports.parse(c, this.img, {
         ignoreMouse: true,
         ignoreAnimation: true,
         ignoreDimensions: true,
         ignoreClear: true,
-        offsetX: dx,
-        offsetY: dy,
         scaleWidth: dw,
         scaleHeight: dh
       });
+
+      ctx.drawImage(c, dx, dy);
     };
 
     this.renderChildren = function(ctx) {

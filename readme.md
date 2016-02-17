@@ -16,7 +16,7 @@ All below documentation should still be accurate. Here's a rather incomplete lis
 - Allowed linear-gradient to be specified in degrees.
 - Partially implement radial-gradient property, supports positioned elliptic and radial gradients.
 - Implement box-shadow property.
-- Integrated a modified version of canvg into html2canvas as SVGParser.
+- Integrated a modified version of canvg into html2canvas as SVGParser, with canvg bugfixes.
 - Fix issues with SVG overflow and other positioning issues.
 - Allow for specifing width and height in html2canvas's options.
 - Better support for iframes, element can now be of a different document.
