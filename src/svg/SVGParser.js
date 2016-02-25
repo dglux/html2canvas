@@ -1831,8 +1831,8 @@ function build(opts) {
 
       if(this.attribute('gradientTransform').hasValue()) {
         // render as transformed pattern on temporary canvas
-        var rootView = svg.ViewPort.viewPorts[0];
-        var bb = element.getBoundingBox();
+        var rootView = this.gradientUnits == 'objectBoundingBox' ? element.getBoundingBox() : svg.ViewPort.Current();
+        var unit = Math.min(rootView.width, rootView.height);
 
         var c = document.createElement('canvas');
         c.width = rootView.width;
@@ -1845,12 +1845,19 @@ function build(opts) {
 
         svg.CanvasBoundingBox.freeze = true;
 
-        var x = bb.x1 + (bb.x2 - bb.x1) / 2;
-        var y = bb.y1 + (bb.y2 - bb.y1) / 2;
+        if(rootView.width !== rootView.height) {
+          var scaleX = rootView.width > rootView.height ? rootView.width / rootView.height : 1;
+          var scaleY = rootView.height > rootView.width ? rootView.height / rootView.width : 1;
+          tempCtx.scale(scaleX, scaleY);
+        }
 
-        tempCtx.translate(x, y);
+        if(element.style('stroke-width').hasValue()) {
+          tempCtx.translate(-element.style('stroke-width').toPixels() * 2, -element.style('stroke-width').toPixels() * 2);
+        }
+
         transform.apply(tempCtx);
-        tempCtx.translate(-x, -y);
+        tempCtx.translate(-rootView.x / scaleX, -rootView.y / scaleY);
+        tempCtx.translate(unit / 2, unit / 2);
         tempCtx.fillRect(-svg.MAX_VIRTUAL_PIXELS / 3.0, -svg.MAX_VIRTUAL_PIXELS / 3.0, svg.MAX_VIRTUAL_PIXELS, svg.MAX_VIRTUAL_PIXELS);
         svg.CanvasBoundingBox.freeze = false;
 
@@ -1880,17 +1887,20 @@ function build(opts) {
         this.attribute('y2', true).value = 0;
       }
 
+      var unit = Math.min(bb.width, bb.height);
+      var hu = unit / -2;
+
       var x1 = (this.gradientUnits == 'objectBoundingBox'
-        ? bb.x + bb.width * this.attribute('x1').numValue()
+        ? hu + unit * this.attribute('x1').numValue()
         : this.attribute('x1').toPixels('x'));
       var y1 = (this.gradientUnits == 'objectBoundingBox'
-        ? bb.y + bb.height * this.attribute('y1').numValue()
+        ? hu + unit * this.attribute('y1').numValue()
         : this.attribute('y1').toPixels('y'));
       var x2 = (this.gradientUnits == 'objectBoundingBox'
-        ? bb.x + bb.width * this.attribute('x2').numValue()
+        ? hu + unit * this.attribute('x2').numValue()
         : this.attribute('x2').toPixels('x'));
       var y2 = (this.gradientUnits == 'objectBoundingBox'
-        ? bb.y + bb.height * this.attribute('y2').numValue()
+        ? hu + unit * this.attribute('y2').numValue()
         : this.attribute('y2').toPixels('y'));
 
       if(x1 == x2 && y1 == y2) return null;
