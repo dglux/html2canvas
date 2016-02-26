@@ -596,7 +596,8 @@ function build(opts) {
   };
 
   // transforms
-  svg.Transform = function(v) {
+  svg.Transform = function(v, f) {
+    f = f || 1;
     var that = this;
     this.Type = {}
 
@@ -618,8 +619,8 @@ function build(opts) {
     this.Type.rotate = function(s) {
       var a = svg.ToNumberArray(s);
       this.angle = new svg.Property('angle', a[0]);
-      this.cx = a[1] || 0;
-      this.cy = a[2] || 0;
+      this.cx = a[1] * f || 0;
+      this.cy = a[2] * f || 0;
 
       this.apply = function(ctx) {
         ctx.translate(this.cx, this.cy);
@@ -1831,7 +1832,9 @@ function build(opts) {
 
       if(this.attribute('gradientTransform').hasValue()) {
         // render as transformed pattern on temporary canvas
-        var rootView = this.gradientUnits == 'objectBoundingBox' ? element.getBoundingBox() : svg.ViewPort.Current();
+        var rootView = svg.ViewPort.Current();
+        var bb = this.gradientUnits == 'objectBoundingBox' ? element.getBoundingBox() : null;
+
         var unit = Math.min(rootView.width, rootView.height);
 
         var c = document.createElement('canvas');
@@ -1839,25 +1842,30 @@ function build(opts) {
         c.height = rootView.height;
 
         var tempCtx = c.getContext('2d');
-        var transform = new svg.Transform(this.attribute('gradientTransform').value);
+        var transform = new svg.Transform(this.attribute('gradientTransform').value, unit);
 
         tempCtx.fillStyle = g;
 
         svg.CanvasBoundingBox.freeze = true;
 
-        if(rootView.width !== rootView.height) {
-          var scaleX = rootView.width > rootView.height ? rootView.width / rootView.height : 1;
-          var scaleY = rootView.height > rootView.width ? rootView.height / rootView.width : 1;
-          tempCtx.scale(scaleX, scaleY);
-        }
+        var scaleX = rootView.width > rootView.height ? rootView.width / rootView.height : 1;
+        var scaleY = rootView.height > rootView.width ? rootView.height / rootView.width : 1;
+
+        tempCtx.scale(scaleX, scaleY);
 
         if(element.style('stroke-width').hasValue()) {
-          tempCtx.translate(-element.style('stroke-width').toPixels() * 2, -element.style('stroke-width').toPixels() * 2);
+          var radix = -element.style('stroke-width').toPixels();
+          tempCtx.translate(radix, radix);
         }
 
         transform.apply(tempCtx);
-        tempCtx.translate(-rootView.x / scaleX, -rootView.y / scaleY);
-        tempCtx.translate(unit / 2, unit / 2);
+
+        if(bb.x1 < 0)
+          tempCtx.translate(bb.x1 / scaleX, 0);
+
+        if(bb.y1 < 0)
+          tempCtx.translate(0, bb.y1 / scaleY);
+
         tempCtx.fillRect(-svg.MAX_VIRTUAL_PIXELS / 3.0, -svg.MAX_VIRTUAL_PIXELS / 3.0, svg.MAX_VIRTUAL_PIXELS, svg.MAX_VIRTUAL_PIXELS);
         svg.CanvasBoundingBox.freeze = false;
 
@@ -1887,20 +1895,20 @@ function build(opts) {
         this.attribute('y2', true).value = 0;
       }
 
+      var offset = 0;
       var unit = Math.min(bb.width, bb.height);
-      var hu = unit / -2;
 
       var x1 = (this.gradientUnits == 'objectBoundingBox'
-        ? hu + unit * this.attribute('x1').numValue()
+        ? unit * this.attribute('x1').numValue() + offset
         : this.attribute('x1').toPixels('x'));
       var y1 = (this.gradientUnits == 'objectBoundingBox'
-        ? hu + unit * this.attribute('y1').numValue()
+        ? unit * this.attribute('y1').numValue() + offset
         : this.attribute('y1').toPixels('y'));
       var x2 = (this.gradientUnits == 'objectBoundingBox'
-        ? hu + unit * this.attribute('x2').numValue()
+        ? unit * this.attribute('x2').numValue() + offset
         : this.attribute('x2').toPixels('x'));
       var y2 = (this.gradientUnits == 'objectBoundingBox'
-        ? hu + unit * this.attribute('y2').numValue()
+        ? unit * this.attribute('y2').numValue() + offset
         : this.attribute('y2').toPixels('y'));
 
       if(x1 == x2 && y1 == y2) return null;
