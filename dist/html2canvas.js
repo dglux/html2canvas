@@ -6862,7 +6862,7 @@ function build(opts) {
       if(this.attribute('gradientTransform').hasValue()) {
         // render as transformed pattern on temporary canvas
         var rootView = svg.ViewPort.Current();
-        var bb = this.gradientUnits == 'objectBoundingBox' ? element.getBoundingBox() : null;
+        var bb = this.gradientUnits == 'objectBoundingBox' ? element.getBoundingBox() : rootView;
 
         var unit = Math.min(rootView.width, rootView.height);
 
@@ -6912,7 +6912,7 @@ function build(opts) {
     this.base(node);
 
     this.getGradient = function(ctx, element) {
-      var bb = this.gradientUnits == 'objectBoundingBox' ? element.getBoundingBox() : null;
+      var bb = this.gradientUnits == 'objectBoundingBox' ? element.getBoundingBox() : svg.ViewPort.Current();
 
       if(!this.attribute('x1').hasValue()
         && !this.attribute('y1').hasValue()
@@ -7499,7 +7499,6 @@ function build(opts) {
       }
       var self = this;
       this.img.onload = function() {
-        console.log(href);
         self.loaded = true;
       }
       this.img.onerror = function() {
@@ -7811,7 +7810,7 @@ function build(opts) {
 
     this.apply = function(ctx, element) {
       // render as temp svg
-      var bb = element.getBoundingBox();
+      var bb = element.getBoundingBox() || svg.ViewPort.Current();
       var x = Math.floor(bb.x1);
       var y = Math.floor(bb.y1);
       var width = Math.floor(bb.width);
@@ -7837,7 +7836,8 @@ function build(opts) {
 
       // apply filters
       for(var i = 0; i < this.children.length; i++) {
-        this.children[i].apply(tempCtx, 0, 0, width + 2 * px, height + 2 * py);
+        if(!(this.children[i] instanceof svg.Element.MISSING))
+          this.children[i].apply(tempCtx, 0, 0, width + 2 * px, height + 2 * py);
       }
 
       // render on me
@@ -7852,6 +7852,36 @@ function build(opts) {
     }
   }
   svg.Element.filter.prototype = new svg.Element.ElementBase;
+
+  svg.Element.feFlood = function(node) {
+    this.base = svg.Element.ElementBase;
+    this.base(node);
+
+    this.apply = function(ctx, x, y, width, height) {
+      x = this.attribute('x').value;
+      y = this.attribute('y').value;
+
+      width = this.attribute('width').value;
+      height = this.attribute('height').value;
+
+      var color = new Color(this.attribute('flood-color').value);
+      color.a = this.attribute('flood-opacity').numValue();
+
+      ctx.fillStyle = color.toString();
+      ctx.fillRect(x, y, width, height);
+    }
+  }
+  svg.Element.feFlood.prototype = new svg.Element.ElementBase;
+
+  svg.Element.feBlend = function(node) {
+    this.base = svg.Element.ElementBase;
+    this.base(node);
+
+    this.apply = function(ctx, x, y, width, height) {
+      // TODO: implement
+    }
+  }
+  svg.Element.feBlend.prototype = new svg.Element.ElementBase;
 
   svg.Element.feMorphology = function(node) {
     this.base = svg.Element.ElementBase;
