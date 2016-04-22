@@ -40,7 +40,7 @@ function LinearGradientContainer(imageData, container) {
             var deg = parseFloat(position.substr(0, position.length - 3));
 
             // Unprefixed radial gradients use bearings instead of polar coords.
-            if(imageData.prefix === '-webkit-') {
+            if(imageData.prefix === '-webkit-' || imageData.prefix === '-moz-') {
               deg = 90 - deg;
             }
 

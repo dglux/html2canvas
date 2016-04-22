@@ -41,7 +41,7 @@ function html2canvas(nodeList, options) {
       frame.src = src;
       frame.width = options.width || '100%';
       frame.height = options.height || '100%';
-      frame.style.display = 'none';
+      utils.hideContainer(frame);
 
       document.body.appendChild(frame);
 
@@ -113,6 +113,8 @@ function html2canvas(nodeList, options) {
       options.onrendered(canvas);
     }
     return canvas;
+  }).catch(function(err) {
+    console.error(err);
   });
 }
 
@@ -138,13 +140,12 @@ function renderDocument(document, options, windowWidth, windowHeight, html2canva
   });
 }
 
-function renderWindow(node, container, options, windowWidth, windowHeight) {
+function renderWindow(node, container, options, width, height) {
   var clonedWindow = container.contentWindow;
   var support = new Support(clonedWindow.document);
   var imageLoader = new ImageLoader(options, support);
   var bounds = getBounds(node);
-  var width = options.type === "view" ? windowWidth : documentWidth(clonedWindow.document);
-  var height = options.type === "view" ? windowHeight : documentHeight(clonedWindow.document);
+
   var renderer = new options.renderer(width, height, imageLoader, options);
   var parser = new NodeParser(node, renderer, support, imageLoader, options);
   return parser.ready.then(function() {
@@ -193,22 +194,6 @@ function crop(canvas, bounds) {
   log("Resulting crop with width", bounds.width, "and height", bounds.height, " with x", x1, "and y", y1);
   croppedCanvas.getContext("2d").drawImage(canvas, x1, y1, x2 - x1, y2 - y1, bounds.x, bounds.y, x2 - x1, y2 - y1);
   return croppedCanvas;
-}
-
-function documentWidth(doc) {
-  return Math.max(
-    Math.max(doc.body.scrollWidth, doc.documentElement.scrollWidth),
-    Math.max(doc.body.offsetWidth, doc.documentElement.offsetWidth),
-    Math.max(doc.body.clientWidth, doc.documentElement.clientWidth)
-  );
-}
-
-function documentHeight(doc) {
-  return Math.max(
-    Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight),
-    Math.max(doc.body.offsetHeight, doc.documentElement.offsetHeight),
-    Math.max(doc.body.clientHeight, doc.documentElement.clientHeight)
-  );
 }
 
 function absoluteUrl(url) {

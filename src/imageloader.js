@@ -6,9 +6,11 @@ var ProxyImageContainer = require('./proxyimagecontainer');
 var FrameContainer = require('./framecontainer');
 var SVGContainer = require('./svg/SVGContainer');
 var SVGNodeContainer = require('./svg/SVGNodeContainer');
+
 var LinearGradientContainer = require('./gradient/LinearGradientContainer');
 var RadialGradientContainer = require('./gradient/RadialGradientContainer');
 var WebkitGradientContainer = require('./gradient/WebKitGradientContainer');
+
 var bind = require('./utils').bind;
 
 function ImageLoader(options, support) {
@@ -49,7 +51,6 @@ ImageLoader.prototype.addImage = function(images, callback, bounds) {
     newImage.args.forEach(function(image) {
       if(!this.imageExists(images, image)) {
         images.splice(0, 0, callback.call(this, newImage, bounds));
-        log('Added image #' + (images.length), typeof(image) === "string" ? image.substring(0, 100) : image);
       }
     }, this);
   };
@@ -128,16 +129,36 @@ ImageLoader.prototype.get = function(src) {
 };
 
 ImageLoader.prototype.fetch = function(nodes) {
+  const logQueue = {};
+  let successCount = 0;
+  let failureCount = 0;
+
   this.images = nodes.reduce(bind(this.findBackgroundImage, this), this.findImages(nodes));
   this.images.forEach(function(image, index) {
+    const i = index + 1;
     image.promise.then(function() {
-      log("Succesfully loaded image #" + (index + 1), image);
+      logQueue[i] = [`Image #${i}: SUCCESS (${image.constructor.name})`, image];
+      successCount++;
     }, function(e) {
-      log("Failed loading image #" + (index + 1), image, e);
+      logQueue[i] = [`Image #${i}: FAILED (${image.constructor.name})`, image];
+      failureCount++;
     });
   });
   this.ready = Promise.all(this.images.map(this.getPromise, this));
   log("Finished searching images");
+
+  this.ready.then(() => {
+    console.groupCollapsed(log.getFormat([`Finished loading images, success: ${successCount}, failed: ${failureCount}`]).join(' '));
+
+    var i = 0, length = Object.keys(logQueue).length;
+    for(; i < length; i++) {
+      const arr = logQueue[(i + 1).toString()];
+      console.info(arr[0], arr[1]);
+    }
+
+    console.groupEnd();
+  });
+
   return this;
 };
 

@@ -238,7 +238,7 @@ NodeParser.prototype.parseTextBounds = function(container) {
         return this.getRangeBounds(container.node, offset, text.length);
       } else if(container.node && typeof(container.node.data) === "string") {
         var replacementNode = container.node.splitText(text.length);
-        var bounds = this.getWrapperBounds(container.node, container.parent.hasTransform());
+        var bounds = utils.wrapperBounds(container.node, container.parent.hasTransform());
         container.node = replacementNode;
         return bounds;
       }
@@ -247,18 +247,6 @@ NodeParser.prototype.parseTextBounds = function(container) {
     }
     return new BoundingBox();
   };
-};
-
-NodeParser.prototype.getWrapperBounds = function(node, transform) {
-  var wrapper = node.ownerDocument.createElement('html2canvaswrapper');
-  var parent = node.parentNode,
-    backupText = node.cloneNode(true);
-
-  wrapper.appendChild(node.cloneNode(true));
-  parent.replaceChild(wrapper, node);
-  var bounds = transform ? offsetBounds(wrapper) : getBounds(wrapper);
-  parent.replaceChild(backupText, wrapper);
-  return bounds;
 };
 
 NodeParser.prototype.getRangeBounds = function(node, offset, length) {
@@ -540,7 +528,12 @@ NodeParser.prototype.paintFormValue = function(container) {
 NodeParser.prototype.paintText = function(container) {
   container.applyTextTransform();
   var characters = punycode.ucs2.decode(container.node.data);
-  var textList = (!this.options.letterRendering || noLetterSpacing(container)) && !hasUnicode(container.node.data) ? getWords(characters) : characters.map(function(character) {
+  // character-by-character positioning if word-wrap: break-word
+  var textList = container.parent.css('wordWrap') !== 'break-word' &&
+      noLetterSpacing(container) &&
+      !hasUnicode(container.node.data) ?
+          getWords(characters) :
+          characters.map(function(character) {
     return punycode.ucs2.encode([character]);
   });
 

@@ -1,5 +1,6 @@
 var log = require('./log');
 var Promise = require('./promise');
+var hideContainer = require('./utils').hideContainer;
 
 function restoreOwnerScroll(ownerDocument, x, y) {
   if(ownerDocument.defaultView && (x !== ownerDocument.defaultView.pageXOffset || y !== ownerDocument.defaultView.pageYOffset)) {
@@ -60,15 +61,9 @@ module.exports = function(ownerDocument, containerDocument, width, height, optio
   var documentElement = cloneNode(ownerDocument.documentElement, options.javascriptEnabled);
   var container = containerDocument.createElement("iframe");
 
-  container.className = "html2canvas-container";
-  container.style.visibility = "hidden";
-  container.style.position = "fixed";
-  container.style.left = "-10000px";
-  container.style.top = "0px";
-  container.style.border = "0";
+  hideContainer(container);
   container.width = width;
   container.height = height;
-  container.scrolling = "no"; // ios won't scroll without it
   containerDocument.body.appendChild(container);
 
   return new Promise(function(resolve) {

@@ -4,6 +4,16 @@ exports.smallImage = function smallImage() {
   return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 };
 
+exports.hideContainer = function(container) {
+  container.className = "html2canvas-container";
+  container.style.visibility = "hidden";
+  container.style.position = "fixed";
+  container.style.left = "-10000px";
+  container.style.top = "0px";
+  container.style.border = "0";
+  container.scrolling = "no"; // ios won't scroll without it
+};
+
 exports.bind = function(callback, context) {
   return function() {
     return callback.apply(context, arguments);
@@ -15,7 +25,7 @@ exports.decode64 = require('base64-arraybuffer').decode;
 exports.getBounds = function(node) {
   if(node.getBoundingClientRect) {
     var clientRect = node.getBoundingClientRect();
-    var width = node.offsetWidth == null ? clientRect.width : node.offsetWidth;
+    var width = (node.tagName === 'svg' || node.offsetWidth == null) ? clientRect.width : node.offsetWidth;
 
     return new BoundingBox(clientRect.left,
                            clientRect.top,
@@ -26,11 +36,57 @@ exports.getBounds = function(node) {
 };
 
 exports.offsetBounds = function(node) {
-  var parent = node.offsetParent ? exports.offsetBounds(node.offsetParent) : {y: 0, x: 0};
-  return new BoundingBox(node.offsetLeft + parent.x,
-                         node.offsetTop + parent.y,
-                         node.offsetLeft + parent.x + node.offsetWidth,
-                         node.offsetTop + node.offsetHeight + parent.y);
+  const isSvg = node.tagName === 'svg';
+  var parent = (isSvg || node.offsetParent) ? exports.offsetBounds(exports.offsetParent(node)) : {x: 0, y: 0};
+
+  // TODO: Support left/top values
+  if(isSvg) {
+    const windowContext = node.ownerDocument.defaultView;
+    const style = windowContext.getComputedStyle(node);
+
+    let left = parseInt(style.getPropertyValue('margin-left'), 10);
+    let top = parseInt(style.getPropertyValue('margin-top'), 10);
+
+    return new BoundingBox(
+      left + parent.x,
+      top + parent.y,
+      left + parent.x + parent.width,
+      top + parent.y + parent.height);
+  }
+
+  return new BoundingBox(
+    node.offsetLeft + parent.x,
+    node.offsetTop + parent.y,
+    node.offsetLeft + parent.x + node.offsetWidth,
+    node.offsetTop + node.offsetHeight + parent.y);
+};
+
+exports.offsetParent = function(node) {
+  if(node.tagName !== 'svg')
+    return node.offsetParent;
+
+  let parent = node.parentNode;
+  let windowContext = parent.ownerDocument.defaultView;
+
+  const position = windowContext.getComputedStyle(parent).getPropertyValue('position');
+  if(position === 'absolute' || position === 'relative' || parent.tagName === 'BODY')
+    return parent;
+
+  return parent.offsetParent;
+};
+
+exports.wrapperBounds = function(node, transform) {
+  var wrapper = node.ownerDocument.createElement('html2canvaswrapper');
+  var parent = node.parentNode;
+  var clone = node.cloneNode(true);
+
+  if(!parent) return new BoundingBox();
+
+  wrapper.appendChild(node.cloneNode(true));
+  parent.replaceChild(wrapper, node);
+  var bounds = transform ? exports.offsetBounds(wrapper) : exports.getBounds(wrapper);
+  parent.replaceChild(clone, wrapper);
+  return bounds;
 };
 
 exports.parseBackgrounds = function(backgroundImage) {
