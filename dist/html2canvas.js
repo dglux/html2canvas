@@ -2811,6 +2811,32 @@ var getBounds = utils.getBounds;
 var html2canvasNodeAttribute = "data-html2canvas-node";
 var html2canvasCloneIndex = 0;
 
+function getDocWidth(node) {
+  var children = Array.prototype.slice.call(node.ownerDocument.body.childNodes).map(function (child) {
+    var bounds = utils.getBounds(child);
+    return [bounds.x + child.innerWidth, bounds.x + child.scrollWidth];
+  }).reduce(function (arr, child) {
+    return arr.concat(child);
+  }, []);
+
+  return Math.max.apply(this, [node.scrollWidth, node.clientWidth, node.offsetWidth, node.ownerDocument.documentElement.clientWidth, node.ownerDocument.documentElement.scrollWidth, node.ownerDocument.documentElement.offsetWidth].concat(children).filter(function (a) {
+    return a;
+  }));
+}
+
+function getDocHeight(node) {
+  var children = Array.prototype.slice.call(node.ownerDocument.body.childNodes).map(function (child) {
+    var bounds = utils.getBounds(child);
+    return [bounds.y + child.innerHeight, bounds.y + child.scrollHeight];
+  }).reduce(function (arr, child) {
+    return arr.concat(child);
+  }, []);
+
+  return Math.max.apply(this, [node.scrollHeight, node.clientHeight, node.offsetHeight, node.ownerDocument.documentElement.clientHeight, node.ownerDocument.documentElement.scrollHeight, node.ownerDocument.documentElement.offsetHeight].concat(children).filter(function (a) {
+    return a;
+  }));
+}
+
 function html2canvas(nodeList, options) {
   var index = html2canvasCloneIndex++;
   options = options || {};
@@ -2860,35 +2886,9 @@ function html2canvas(nodeList, options) {
     node = nodeList.length ? nodeList[0] : nodeList;
   }
 
-  function getWidth() {
-    var children = Array.prototype.slice.call(node.ownerDocument.body.childNodes).map(function (child) {
-      var bounds = utils.getBounds(child);
-      return [bounds.x + child.innerWidth, bounds.x + child.scrollWidth];
-    }).reduce(function (arr, child) {
-      return arr.concat(child);
-    }, []);
-
-    return Math.max.apply(this, [node.scrollWidth, node.clientWidth, node.offsetWidth, document.documentElement.clientWidth, document.documentElement.scrollWidth, document.documentElement.offsetWidth].concat(children).filter(function (a) {
-      return a;
-    }));
-  }
-
-  function getHeight() {
-    var children = Array.prototype.slice.call(node.ownerDocument.body.childNodes).map(function (child) {
-      var bounds = utils.getBounds(child);
-      return [bounds.y + child.innerHeight, bounds.y + child.scrollHeight];
-    }).reduce(function (arr, child) {
-      return arr.concat(child);
-    }, []);
-
-    return Math.max.apply(this, [node.scrollHeight, node.clientHeight, node.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight].concat(children).filter(function (a) {
-      return a;
-    }));
-  }
-
   node.setAttribute(html2canvasNodeAttribute + index, index);
-  var width = options.width != null ? options.width : getWidth();
-  var height = options.height != null ? options.height : getHeight();
+  var width = options.width || getDocWidth(node);
+  var height = options.height || getDocHeight(node);
 
   return renderDocument(node.ownerDocument, options, width, height, index).then(function (canvas) {
     if (typeof options.onrendered === "function") {
@@ -2923,11 +2923,14 @@ function renderDocument(document, options, windowWidth, windowHeight, html2canva
   });
 }
 
-function renderWindow(node, container, options, width, height) {
+function renderWindow(node, container, options, windowWidth, windowHeight) {
   var clonedWindow = container.contentWindow;
   var support = new Support(clonedWindow.document);
   var imageLoader = new ImageLoader(options, support);
   var bounds = getBounds(node);
+
+  var width = options.type === "view" ? windowWidth : getDocWidth(node);
+  var height = options.type === "view" ? windowHeight : getDocHeight(node);
 
   var renderer = new options.renderer(width, height, imageLoader, options);
   var parser = new NodeParser(node, renderer, support, imageLoader, options);

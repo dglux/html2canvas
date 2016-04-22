@@ -3,7 +3,6 @@ image.jpg
 /.project
 /.settings/
 node_modules/
-dist/
 .envrc
 *.sublime-workspace
 *.baseline

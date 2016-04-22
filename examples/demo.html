@@ -35,7 +35,10 @@
 
             html2canvas(framedoc.documentElement.innerHTML).then(function(canvas) {
               document.body.removeChild(frame);
-              document.body.appendChild(canvas);
+
+              var image = document.createElement('img');
+              image.src = canvas.toDataURL();
+              document.body.appendChild(image);
               console.log("Hello #2");
             });
           };
