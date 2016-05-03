@@ -30,11 +30,15 @@ All below documentation should still be accurate. Here's a rather incomplete lis
 - Better support for iframes, element can now be of a different document.
 - html2canvas function now accepts HTML as a String, and will parse it correctly inside a hidden iframe.
 - Will work in Chrome 50+, solves issue with SVGElement.offset[Parent,Left,Top,Width,Height] no longer existing (this also allows for real Firefox support).
+- Broke (and then fixed) support for IE11 and Microsoft Edge.
+- Added a scale property that will scale the entire canvas, width, and height.
 
 To build, run `npm run build`, to start a watch server on port 8080, run `npm run watch`.
 
 #### TODO ####
 
 - [ ] New unit tests
+- [ ] Fully reimplement left/top properties for SVG's offsetLeft/offsetTop (removed in Chrome 50, non-existent elsewhere)
+- [ ] Scale SVG with the scale property
 - [ ] More accurate implementation of CSS properties
 - [ ] Clean up code base for ES2015, make code a lot easier to read, remove a lot of hacks, etc.
