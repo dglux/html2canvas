@@ -72,28 +72,29 @@ function html2canvas(nodeList, options) {
 
   if(typeof(nodeList) === "string") {
     log("Creating iframe for HTML contents");
-    return new Promise(function(complete) {
+    return new Promise(function(complete, reject) {
       var frame = document.createElement("iframe");
 
-      var blob = new Blob([nodeList], { type : 'text/html' });
-      var src = URL.createObjectURL(blob);
-
-      frame.src = src;
       frame.width = options.width || '100%';
       frame.height = options.height || '100%';
       utils.hideContainer(frame);
 
       document.body.appendChild(frame);
 
+      const frameDocument = frame.contentWindow.document;
       frame.onload = function() {
-        var framedoc = frame.contentDocument || frame.contentWindow.document;
-
-        html2canvas(framedoc.documentElement, options).then(function(canvas) {
+        html2canvas(frameDocument.documentElement, options).then(function(canvas) {
           document.body.removeChild(frame);
-          URL.revokeObjectURL(src);
           complete(canvas);
+        }).catch((e) => {
+          console.log(e);
+          reject(e);
         });
       };
+
+      frameDocument.open();
+      frameDocument.write(nodeList);
+      frameDocument.close();
     });
   }
 

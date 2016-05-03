@@ -2855,28 +2855,29 @@ function html2canvas(nodeList, options) {
 
   if (typeof nodeList === "string") {
     log("Creating iframe for HTML contents");
-    return new Promise(function (complete) {
+    return new Promise(function (complete, reject) {
       var frame = document.createElement("iframe");
 
-      var blob = new Blob([nodeList], { type: 'text/html' });
-      var src = URL.createObjectURL(blob);
-
-      frame.src = src;
       frame.width = options.width || '100%';
       frame.height = options.height || '100%';
       utils.hideContainer(frame);
 
       document.body.appendChild(frame);
 
+      var frameDocument = frame.contentWindow.document;
       frame.onload = function () {
-        var framedoc = frame.contentDocument || frame.contentWindow.document;
-
-        html2canvas(framedoc.documentElement, options).then(function (canvas) {
+        html2canvas(frameDocument.documentElement, options).then(function (canvas) {
           document.body.removeChild(frame);
-          URL.revokeObjectURL(src);
           complete(canvas);
+        }).catch(function (e) {
+          console.log(e);
+          reject(e);
         });
       };
+
+      frameDocument.open();
+      frameDocument.write(nodeList);
+      frameDocument.close();
     });
   }
 
@@ -3205,25 +3206,29 @@ NodeContainer.prototype.parseBoxShadows = function () {
     for (var i = 0; shadows && i < shadows.length; i++) {
       var s = shadows[i].match(this.BOX_SHADOW_VALUES);
 
-      var ci = s[0] === 'inset' ? 1 : 0;
-      var color = new Color(s[ci]);
+      var ci = 0;
+      var insetEndTest = s[s.length - 1] === 'inset';
+      var isInset = s[0] === 'inset' || insetEndTest;
+
+      var color = new Color(!isInset || insetEndTest ? s[ci] : s[s.length - 1]);
+
+      if (!isInset && (!color.isColor || isNaN(s[ci]))) {
+        ci = -1;
+        color = new Color(s[s.length - 1]);
+      }
 
       var result = {
         color: color,
         offsetX: s[ci + 1] && s[ci + 1] !== 'inset' ? parseFloat(s[ci + 1]) : 0,
         offsetY: s[ci + 2] && s[ci + 2] !== 'inset' ? parseFloat(s[ci + 2]) : 0,
         blur: s[ci + 3] && s[ci + 3] !== 'inset' ? parseFloat(s[ci + 3]) : 0,
-        spread: s[ci + 4] && s[ci + 4] !== 'inset' ? parseFloat(s[ci + 4]) : 0
+        spread: s[ci + 4] && s[ci + 4] !== 'inset' ? parseFloat(s[ci + 4]) : 0,
+        inset: isInset
       };
-
-      if (ci === 1 || s[s.length - 1] === 'inset') {
-        result.inset = true;
-      }
 
       results.push(result);
     }
   }
-
   return results;
 };
 
