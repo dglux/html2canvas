@@ -6,8 +6,6 @@ var log = require('../log');
 function CanvasRenderer(width, height, imageLoader, options) {
   Renderer.apply(this, arguments);
   this.canvas = this.options.canvas || document.createElement("canvas");
-  this.scale = devicePixelRatio * this.options.scale;
-
   if(!this.options.canvas) {
     this.canvas.width = width * devicePixelRatio;
     this.canvas.style.width = width + 'px';
@@ -18,7 +16,7 @@ function CanvasRenderer(width, height, imageLoader, options) {
   this.ctx = this.canvas.getContext("2d");
   this.taintCtx = document.createElement("canvas").getContext("2d");
 
-  this.ctx.scale(this.scale, this.scale);
+  this.ctx.scale(devicePixelRatio, devicePixelRatio);
 
   this.ctx.textBaseline = "bottom";
   this.variables = {};
@@ -94,7 +92,7 @@ CanvasRenderer.prototype.clip = function(shapes, callback, context) {
     return;
 
   this.save();
-  this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+  this.ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
 
 /*
   shapes.filter(hasEntries).forEach(function(shape) {
@@ -162,7 +160,7 @@ CanvasRenderer.prototype.getTransform = function() {
 
   return {
     origin: [0, 0],
-    matrix: [this.scale, 0, 0, this.scale, 0, 0]
+    matrix: [devicePixelRatio, 0, 0, devicePixelRatio, 0, 0]
   };
 };
 
@@ -230,7 +228,7 @@ CanvasRenderer.prototype.renderBackgroundGradient = function(gradientImage, boun
       });
 
       var currentTransform = this.ctx.currentTransform;
-      this.ctx.setTransform(gradientImage.scaleX * this.scale, 0, 0, gradientImage.scaleY * this.scale, 0, 0);
+      this.ctx.setTransform(gradientImage.scaleX * devicePixelRatio, 0, 0, gradientImage.scaleY * devicePixelRatio, 0, 0);
       this.rectangle(bounds.x / gradientImage.scaleX, bounds.y / gradientImage.scaleY, bounds.width, bounds.height, gradient);
 
       // reset the old transform

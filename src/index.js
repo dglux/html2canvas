@@ -62,7 +62,6 @@ function html2canvas(nodeList, options) {
     html2canvas.start = Date.now();
   }
 
-  options.scale = options.scale || 1;
   options.async = typeof(options.async) === "undefined" ? true : options.async;
   options.allowTaint = typeof(options.allowTaint) === "undefined" ? false : options.allowTaint;
   options.removeContainer = typeof(options.removeContainer) === "undefined" ? true : options.removeContainer;
@@ -106,9 +105,8 @@ function html2canvas(nodeList, options) {
   }
 
   node.setAttribute(html2canvasNodeAttribute + index, index);
-
-  var width = (options.width || getDocWidth(node)) * options.scale;
-  var height = (options.height || getDocHeight(node)) * options.scale;
+  var width = options.width || getDocWidth(node);
+  var height = options.height || getDocHeight(node);
 
   return renderDocument(node.ownerDocument, options, width, height, index).then(function(canvas) {
     if(typeof(options.onrendered) === "function") {
