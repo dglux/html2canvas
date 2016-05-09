@@ -20,13 +20,13 @@ function cloneCanvasContents(canvas, clonedCanvas) {
   }
 }
 
-function cloneNode(node, javascriptEnabled) {
-  var clone = node.nodeType === 3 ? document.createTextNode(node.nodeValue) : node.cloneNode(false);
+function cloneNode(node, javascriptEnabled, containerDocument) {
+  var clone = node.nodeType === 3 ? containerDocument.createTextNode(node.nodeValue) : node.cloneNode(false);
 
   var child = node.firstChild;
   while(child) {
     if(javascriptEnabled === true || child.nodeType !== 1 || child.nodeName !== 'SCRIPT') {
-      clone.appendChild(cloneNode(child, javascriptEnabled));
+      clone.appendChild(cloneNode(child, javascriptEnabled, containerDocument));
     }
     child = child.nextSibling;
   }
@@ -58,7 +58,7 @@ function initNode(node) {
 }
 
 module.exports = function(ownerDocument, containerDocument, width, height, options, x, y) {
-  var documentElement = cloneNode(ownerDocument.documentElement, options.javascriptEnabled);
+  var documentElement = cloneNode(ownerDocument.documentElement, options.javascriptEnabled, containerDocument);
   var container = containerDocument.createElement("iframe");
 
   hideContainer(container);

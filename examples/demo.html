@@ -24,7 +24,7 @@
     <script type="text/javascript">
         window.onload = function () {
           var frame = document.createElement("iframe");
-          frame.src = 'htmlTest4.html';
+          frame.src = 'client.html';
           frame.width = '100%';
           frame.height = '100%';
           document.body.appendChild(frame);
@@ -33,7 +33,7 @@
             console.log("Hello");
             var framedoc = frame.contentDocument || frame.contentWindow.document;
 
-            html2canvas(framedoc.documentElement.innerHTML).then(function(canvas) {
+            html2canvas(framedoc.documentElement.innerHTML, { scale: 4 }).then(function(canvas) {
               document.body.removeChild(frame);
 
               var image = document.createElement('img');

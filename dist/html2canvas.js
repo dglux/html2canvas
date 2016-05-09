@@ -1777,13 +1777,13 @@ function cloneCanvasContents(canvas, clonedCanvas) {
   }
 }
 
-function cloneNode(node, javascriptEnabled) {
-  var clone = node.nodeType === 3 ? document.createTextNode(node.nodeValue) : node.cloneNode(false);
+function cloneNode(node, javascriptEnabled, containerDocument) {
+  var clone = node.nodeType === 3 ? containerDocument.createTextNode(node.nodeValue) : node.cloneNode(false);
 
   var child = node.firstChild;
   while (child) {
     if (javascriptEnabled === true || child.nodeType !== 1 || child.nodeName !== 'SCRIPT') {
-      clone.appendChild(cloneNode(child, javascriptEnabled));
+      clone.appendChild(cloneNode(child, javascriptEnabled, containerDocument));
     }
     child = child.nextSibling;
   }
@@ -1815,7 +1815,7 @@ function initNode(node) {
 }
 
 module.exports = function (ownerDocument, containerDocument, width, height, options, x, y) {
-  var documentElement = cloneNode(ownerDocument.documentElement, options.javascriptEnabled);
+  var documentElement = cloneNode(ownerDocument.documentElement, options.javascriptEnabled, containerDocument);
   var container = containerDocument.createElement("iframe");
 
   hideContainer(container);
@@ -2811,28 +2811,42 @@ var getBounds = utils.getBounds;
 var html2canvasNodeAttribute = "data-html2canvas-node";
 var html2canvasCloneIndex = 0;
 
-function getDocWidth(node) {
+function getDocWidth(node, isDGLux) {
+  var hasScroll = !isDGLux || node.ownerDocument.body.firstChild.style.overflowX !== 'hidden';
   var children = Array.prototype.slice.call(node.ownerDocument.body.childNodes).map(function (child) {
     var bounds = utils.getBounds(child);
-    return [bounds.x + child.innerWidth, bounds.x + child.scrollWidth];
+    var arr = [bounds.x + child.innerWidth];
+    if (hasScroll) arr.push(bounds.x + child.scrollWidth);
+    return arr;
   }).reduce(function (arr, child) {
     return arr.concat(child);
   }, []);
 
-  return Math.max.apply(this, [node.scrollWidth, node.clientWidth, node.offsetWidth, node.ownerDocument.documentElement.clientWidth, node.ownerDocument.documentElement.scrollWidth, node.ownerDocument.documentElement.offsetWidth].concat(children).filter(function (a) {
+  var arr = [node.clientWidth, node.offsetWidth, node.ownerDocument.documentElement.clientWidth, node.ownerDocument.documentElement.offsetWidth];
+
+  if (hasScroll) arr = arr.concat([node.scrollWidth, node.ownerDocument.documentElement.scrollWidth]);
+
+  return Math.max.apply(this, arr.concat(children).filter(function (a) {
     return a;
   }));
 }
 
-function getDocHeight(node) {
+function getDocHeight(node, isDGLux) {
+  var hasScroll = !isDGLux || node.ownerDocument.body.firstChild.style.overflowY !== 'hidden';
   var children = Array.prototype.slice.call(node.ownerDocument.body.childNodes).map(function (child) {
     var bounds = utils.getBounds(child);
-    return [bounds.y + child.innerHeight, bounds.y + child.scrollHeight];
+    var arr = [bounds.y + child.innerHeight];
+    if (hasScroll) arr.push(bounds.y + child.scrollHeight);
+    return arr;
   }).reduce(function (arr, child) {
     return arr.concat(child);
   }, []);
 
-  return Math.max.apply(this, [node.scrollHeight, node.clientHeight, node.offsetHeight, node.ownerDocument.documentElement.clientHeight, node.ownerDocument.documentElement.scrollHeight, node.ownerDocument.documentElement.offsetHeight].concat(children).filter(function (a) {
+  var arr = [node.clientHeight, node.offsetHeight, node.ownerDocument.documentElement.clientHeight, node.ownerDocument.documentElement.offsetHeight];
+
+  if (hasScroll) arr = arr.concat([node.scrollHeight, node.ownerDocument.documentElement.scrollHeight]);
+
+  return Math.max.apply(this, arr.concat(children).filter(function (a) {
     return a;
   }));
 }
@@ -2845,6 +2859,8 @@ function html2canvas(nodeList, options) {
     html2canvas.start = Date.now();
   }
 
+  options.isDGLux = options.isDGLux || false;
+  options.scale = options.scale || 1;
   options.async = typeof options.async === "undefined" ? true : options.async;
   options.allowTaint = typeof options.allowTaint === "undefined" ? false : options.allowTaint;
   options.removeContainer = typeof options.removeContainer === "undefined" ? true : options.removeContainer;
@@ -2888,8 +2904,8 @@ function html2canvas(nodeList, options) {
   }
 
   node.setAttribute(html2canvasNodeAttribute + index, index);
-  var width = options.width || getDocWidth(node);
-  var height = options.height || getDocHeight(node);
+  var width = options.width || getDocWidth(node, options.isDGLux);
+  var height = options.height || getDocHeight(node, options.isDGLux);
 
   return renderDocument(node.ownerDocument, options, width, height, index).then(function (canvas) {
     if (typeof options.onrendered === "function") {
@@ -2930,8 +2946,8 @@ function renderWindow(node, container, options, windowWidth, windowHeight) {
   var imageLoader = new ImageLoader(options, support);
   var bounds = getBounds(node);
 
-  var width = options.type === "view" ? windowWidth : getDocWidth(node);
-  var height = options.type === "view" ? windowHeight : getDocHeight(node);
+  var width = options.type === "view" ? windowWidth : getDocWidth(node, options.isDGLux);
+  var height = options.type === "view" ? windowHeight : getDocHeight(node, options.isDGLux);
 
   var renderer = new options.renderer(width, height, imageLoader, options);
   var parser = new NodeParser(node, renderer, support, imageLoader, options);
@@ -4487,17 +4503,19 @@ var log = require('../log');
 function CanvasRenderer(width, height, imageLoader, options) {
   Renderer.apply(this, arguments);
   this.canvas = this.options.canvas || document.createElement("canvas");
+  this.scale = devicePixelRatio * (options.scale || 1);
+
   if (!this.options.canvas) {
-    this.canvas.width = width * devicePixelRatio;
-    this.canvas.style.width = width + 'px';
-    this.canvas.height = height * devicePixelRatio;
-    this.canvas.style.height = height + 'px';
+    this.canvas.width = width * this.scale;
+    this.canvas.style.width = width * (options.scale || 1) + 'px';
+    this.canvas.height = height * this.scale;
+    this.canvas.style.height = height * (options.scale || 1) + 'px';
   }
 
   this.ctx = this.canvas.getContext("2d");
   this.taintCtx = document.createElement("canvas").getContext("2d");
 
-  this.ctx.scale(devicePixelRatio, devicePixelRatio);
+  this.ctx.scale(this.scale, this.scale);
 
   this.ctx.textBaseline = "bottom";
   this.variables = {};
@@ -4572,7 +4590,7 @@ CanvasRenderer.prototype.clip = function (shapes, callback, context) {
   if (shapes.length === 0) return;
 
   this.save();
-  this.ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
 
   /*
     shapes.filter(hasEntries).forEach(function(shape) {
@@ -4635,7 +4653,7 @@ CanvasRenderer.prototype.getTransform = function () {
 
   return {
     origin: [0, 0],
-    matrix: [devicePixelRatio, 0, 0, devicePixelRatio, 0, 0]
+    matrix: [this.scale, 0, 0, this.scale, 0, 0]
   };
 };
 
@@ -4690,7 +4708,7 @@ CanvasRenderer.prototype.renderBackgroundGradient = function (gradientImage, bou
       });
 
       var currentTransform = this.ctx.currentTransform;
-      this.ctx.setTransform(gradientImage.scaleX * devicePixelRatio, 0, 0, gradientImage.scaleY * devicePixelRatio, 0, 0);
+      this.ctx.setTransform(gradientImage.scaleX * this.scale, 0, 0, gradientImage.scaleY * this.scale, 0, 0);
       this.rectangle(bounds.x / gradientImage.scaleX, bounds.y / gradientImage.scaleY, bounds.width, bounds.height, gradient);
 
       // reset the old transform
