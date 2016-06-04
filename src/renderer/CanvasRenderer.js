@@ -129,7 +129,7 @@ CanvasRenderer.prototype.shape = function(shape) {
 };
 
 CanvasRenderer.prototype.font = function(color, style, variant, weight, size, family) {
-  this.setFillStyle(color).font = [style, variant, weight, size, family].join(" ").split(",")[0];
+  this.setFillStyle(color).font = [style, variant, weight, size].join(" ").split(",")[0] + ' ' + family;
 };
 
 CanvasRenderer.prototype.setShadow = function(color, offsetX, offsetY, blur) {

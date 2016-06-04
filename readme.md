@@ -11,7 +11,7 @@ Modified for use within DGLogik. If you want to use it or expand on it compared 
 
 DGLogik is targeting the following browsers, recent versions unless otherwise specified:
 
-- IE10+
+- IE11
 - Microsoft Edge
 - Chromium / Google Chrome (therefore also Opera and all Electron derivatives)
 - Firefox
@@ -30,6 +30,8 @@ All below documentation should still be accurate. Here's a rather incomplete lis
 - Better support for iframes, element can now be of a different document.
 - html2canvas function now accepts HTML as a String, and will parse it correctly inside a hidden iframe.
 - Will work in Chrome 50+, solves issue with SVGElement.offset[Parent,Left,Top,Width,Height] no longer existing (this also allows for real Firefox support).
+- Add scaling support via a `scale` property, will also scale output width/height. Useful for embedding in PDF files, etc.
+- Added a `isDGLux` property. If this is enabled, window width/height will be calculated differently based on the overflowX/overflowY styles of the first child of the body.
 
 To build, run `npm run build`, to start a watch server on port 8080, run `npm run watch`.
 
