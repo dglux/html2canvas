@@ -85,7 +85,7 @@ ImageLoader.prototype.loadImage = function(imageData, container) {
   } else if(imageData.method === "svg") {
     return new SVGNodeContainer(imageData.args[0]);
   } else if(imageData.method === "IFRAME") {
-    return new FrameContainer(imageData.args[0], this.isSameOrigin(imageData.args[0].src), this.options);
+    return new FrameContainer(imageData.args[0], this.options);
   } else {
     return new DummyImageContainer(imageData);
   }

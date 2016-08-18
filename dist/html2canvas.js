@@ -2226,20 +2226,24 @@ var Promise = require('./promise');
 var getBounds = utils.getBounds;
 var loadUrlDocument = require('./proxy').loadUrlDocument;
 
-function FrameContainer(container, sameOrigin, options) {
+function FrameContainer(container, options) {
   this.image = null;
   this.src = container;
   var self = this;
   var bounds = getBounds(container);
-  this.promise = (!sameOrigin ? this.proxyLoad(options.proxy, bounds, options) : new Promise(function (resolve) {
-    if (container.contentWindow.document.URL === "about:blank" || container.contentWindow.document.documentElement == null) {
-      container.contentWindow.onload = container.onload = function () {
+  this.promise = new Promise(function (resolve, reject) {
+    try {
+      if (container.contentWindow.document.URL === "about:blank" || container.contentWindow.document.documentElement == null) {
+        container.contentWindow.onload = container.onload = function () {
+          resolve(container);
+        };
+      } else {
         resolve(container);
-      };
-    } else {
-      resolve(container);
+      }
+    } catch (e) {
+      reject(e);
     }
-  })).then(function (container) {
+  }).then(function (container) {
     var html2canvas = require('./');
     return html2canvas(container.contentWindow.document.documentElement, {
       type: 'view',
@@ -2695,7 +2699,7 @@ ImageLoader.prototype.loadImage = function (imageData, container) {
   } else if (imageData.method === "svg") {
     return new SVGNodeContainer(imageData.args[0]);
   } else if (imageData.method === "IFRAME") {
-    return new FrameContainer(imageData.args[0], this.isSameOrigin(imageData.args[0].src), this.options);
+    return new FrameContainer(imageData.args[0], this.options);
   } else {
     return new DummyImageContainer(imageData);
   }
