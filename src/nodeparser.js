@@ -79,7 +79,13 @@ NodeParser.prototype.calculateOverflowClips = function() {
       }
       container.borders = this.parseBorders(container);
 
-      var clip = (container.css('overflow') === "hidden") ? [["transform", container.parseTransform()], container.borders.clip] : [["transform", container.parseTransform()]];
+      var hasOverflowClip = container.css('overflow') === "hidden" ||
+        container.css('overflow') === "scroll" ||
+        (container.css('overflow') === "auto" &&
+          (container.node.scrollWidth >= container.node.clientWidth ||
+          container.node.scrollHeight >= container.node.clientHeight));
+
+      var clip = hasOverflowClip ? [["transform", container.parseTransform()], container.borders.clip] : [["transform", container.parseTransform()]];
       var cssClip = container.parseClip();
       if(cssClip && ["absolute", "fixed"].indexOf(container.css('position')) !== -1) {
         clip.push([["rect",
@@ -91,7 +97,7 @@ NodeParser.prototype.calculateOverflowClips = function() {
       }
 
       container.clip = hasParentClip(container) ? container.parent.clip.concat(clip) : clip;
-      container.backgroundClip = (container.css('overflow') !== "hidden") ? container.clip.concat([container.borders.clip]) : container.clip;
+      container.backgroundClip = !hasOverflowClip ? container.clip.concat([container.borders.clip]) : container.clip;
       if(isPseudoElement(container)) {
         container.cleanDOM();
       }

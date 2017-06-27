@@ -579,6 +579,10 @@ function build(opts) {
   };
 
   svg.CanvasBoundingBox.apply = function(ctx, bb) {
+    if (svg.opts.ignoreDimensions == true) {
+      return;
+    }
+
     if(Math.floor(bb.width) !== Math.floor(this.width)) {
       ctx.canvas.width = this.width;
       ctx.canvas.style.width = ctx.canvas.width + 'px';
@@ -2495,6 +2499,7 @@ function build(opts) {
         ignoreAnimation: true,
         ignoreDimensions: true,
         ignoreClear: true,
+        scale: 1,
         scaleWidth: dw,
         scaleHeight: dh
       });
@@ -3026,8 +3031,8 @@ function build(opts) {
           ctx.canvas.style.height = ctx.canvas.height + 'px';
         }
       }
-      var cWidth = ctx.canvas.clientWidth || ctx.canvas.width;
-      var cHeight = ctx.canvas.clientHeight || ctx.canvas.height;
+      var cWidth = ctx.canvas.clientWidth || ctx.canvas.width / (svg.opts.scale || 1);
+      var cHeight = ctx.canvas.clientHeight || ctx.canvas.height / (svg.opts.scale || 1);
       if(svg.opts['ignoreDimensions'] == true && e.style('width').hasValue() && e.style('height').hasValue()) {
         cWidth = e.style('width').toPixels('x');
         cHeight = e.style('height').toPixels('y');
@@ -3060,6 +3065,18 @@ function build(opts) {
         e.attribute('width', true).value = svg.opts['scaleWidth'];
         e.attribute('height', true).value = svg.opts['scaleHeight'];
         e.attribute('transform', true).value += ' scale(' + (1.0 / xRatio) + ',' + (1.0 / yRatio) + ')';
+      }
+
+      if (svg.opts.scale != null) {
+        e.attribute('transform', true).value += ' scale(' + svg.opts.scale + ',' + svg.opts.scale + ')';
+
+        if (e.style('width').hasValue()) {
+          e.attribute('width', true).value = e.style('width').toPixels('x') * svg.opts.scale;
+        }
+
+        if (e.style('height').hasValue()) {
+          e.attribute('height', true).value = e.style('height').toPixels('y') * svg.opts.scale;
+        }
       }
 
       // clear and render

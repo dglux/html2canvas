@@ -1045,14 +1045,103 @@
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"_process":3}],3:[function(require,module,exports){
 // shim for using process in browser
-
 var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
 var queue = [];
 var draining = false;
 var currentQueue;
 var queueIndex = -1;
 
 function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
     draining = false;
     if (currentQueue.length) {
         queue = currentQueue.concat(queue);
@@ -1068,7 +1157,7 @@ function drainQueue() {
     if (draining) {
         return;
     }
-    var timeout = setTimeout(cleanUpNextTick);
+    var timeout = runTimeout(cleanUpNextTick);
     draining = true;
 
     var len = queue.length;
@@ -1085,7 +1174,7 @@ function drainQueue() {
     }
     currentQueue = null;
     draining = false;
-    clearTimeout(timeout);
+    runClearTimeout(timeout);
 }
 
 process.nextTick = function (fun) {
@@ -1097,7 +1186,7 @@ process.nextTick = function (fun) {
     }
     queue.push(new Item(fun, args));
     if (queue.length === 1 && !draining) {
-        setTimeout(drainQueue, 0);
+        runTimeout(drainQueue);
     }
 };
 
@@ -1125,6 +1214,10 @@ process.off = noop;
 process.removeListener = noop;
 process.removeAllListeners = noop;
 process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
 
 process.binding = function (name) {
     throw new Error('process.binding is not supported');
@@ -2678,7 +2771,7 @@ ImageLoader.prototype.loadImage = function (imageData, container) {
   if (imageData.method === "url") {
     var src = imageData.args[0];
     if (this.isSVG(src) && !this.options.allowTaint) {
-      return new SVGContainer(src);
+      return new SVGContainer(src, this.options);
     } else if (src.match(/data:image\/.*;base64,/i)) {
       return new ImageContainer(src.replace(/url\(['"]{0,}|['"]{0,}\)$/ig, ''), false);
     } else if (this.isSameOrigin(src) || this.options.allowTaint === true || this.isSVG(src)) {
@@ -2697,7 +2790,7 @@ ImageLoader.prototype.loadImage = function (imageData, container) {
   } else if (imageData.method === "gradient") {
     return new WebkitGradientContainer(imageData, container);
   } else if (imageData.method === "svg") {
-    return new SVGNodeContainer(imageData.args[0]);
+    return new SVGNodeContainer(imageData.args[0], this.options);
   } else if (imageData.method === "IFRAME") {
     return new FrameContainer(imageData.args[0], this.options);
   } else {
@@ -3318,7 +3411,7 @@ NodeContainer.prototype.getValue = function () {
   if (this.node.tagName === "SELECT") {
     value = selectionValue(this.node);
   } else if (this.node.type === "password") {
-    value = Array(value.length + 1).join('•'); // jshint ignore:line
+    value = Array(value.length + 1).join('\u2022'); // jshint ignore:line
   }
   return value.length === 0 ? this.node.placeholder || "" : value;
 };
@@ -3443,14 +3536,16 @@ NodeParser.prototype.calculateOverflowClips = function () {
       }
       container.borders = this.parseBorders(container);
 
-      var clip = container.css('overflow') === "hidden" ? [["transform", container.parseTransform()], container.borders.clip] : [["transform", container.parseTransform()]];
+      var hasOverflowClip = container.css('overflow') === "hidden" || container.css('overflow') === "scroll" || container.css('overflow') === "auto" && (container.node.scrollWidth >= container.node.clientWidth || container.node.scrollHeight >= container.node.clientHeight);
+
+      var clip = hasOverflowClip ? [["transform", container.parseTransform()], container.borders.clip] : [["transform", container.parseTransform()]];
       var cssClip = container.parseClip();
       if (cssClip && ["absolute", "fixed"].indexOf(container.css('position')) !== -1) {
         clip.push([["rect", container.bounds.x + cssClip.x, container.bounds.y + cssClip.y, cssClip.x2 - cssClip.x, cssClip.y2 - cssClip.y]]);
       }
 
       container.clip = hasParentClip(container) ? container.parent.clip.concat(clip) : clip;
-      container.backgroundClip = container.css('overflow') !== "hidden" ? container.clip.concat([container.borders.clip]) : container.clip;
+      container.backgroundClip = !hasOverflowClip ? container.clip.concat([container.borders.clip]) : container.clip;
       if (isPseudoElement(container)) {
         container.cleanDOM();
       }
@@ -3830,7 +3925,7 @@ NodeParser.prototype.paintCheckbox = function (container) {
     this.renderer.renderBorders(calculateBorders(borders, bounds, borderPoints, radius));
     if (container.node.checked) {
       this.renderer.font(new Color('#424242'), 'normal', 'normal', 'bold', size - 3 + "px", 'arial');
-      this.renderer.text('✔', bounds.x + size / 6, bounds.y + size - 1);
+      this.renderer.text('\u2714', bounds.x + size / 6, bounds.y + size - 1);
     }
   }, this);
 };
@@ -4497,7 +4592,7 @@ module.exports = PseudoElementContainer;
 },{"./nodecontainer":20}],26:[function(require,module,exports){
 'use strict';
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var Renderer = require('./Renderer');
 var LinearGradientContainer = require('../gradient/LinearGradientContainer');
@@ -4931,9 +5026,11 @@ var XHR = require('../xhr');
 var decode64 = require('../utils').decode64;
 var SVGParser = require('./SVGParser.js');
 
-function SVGContainer(src) {
+function SVGContainer(src, options) {
   this.src = src;
   this.image = document.createElement('canvas');
+
+  this.scale = devicePixelRatio * (options.scale || 1);
   var self = this;
 
   this.getBounds = function (bounds) {
@@ -4945,13 +5042,30 @@ function SVGContainer(src) {
     return bounds;
   };
 
+  // first pass is to get bounding box only
+  // second pass is to render w/ scale
   this.promise = (self.isInline(src) ? Promise.resolve(self.inlineFormatting(src)) : XHR(src)).then(function (svg) {
     return new Promise(function (resolve) {
-      SVGParser.parse(this.image, svg, {
-        renderCallback: function (obj) {
-          this.bb = obj.bounds;
-          resolve();
-        }.bind(this)
+      // dummy canvas for first pass
+      var canvas = document.createElement('canvas');
+      SVGParser.parse(canvas, node, {
+        renderCallback: function renderCallback(obj) {
+          self.bb = obj.bounds;
+
+          self.image.style.width = self.bb.width + "px";
+          self.image.style.height = self.bb.height + "px";
+
+          self.image.width = self.bb.width * self.scale;
+          self.image.height = self.bb.height * self.scale;
+
+          SVGParser.parse(self.image, node, {
+            ignoreDimensions: true,
+            scale: self.scale,
+            renderCallback: function renderCallback(obj) {
+              resolve();
+            }
+          });
+        }
       });
     }.bind(this));
   }.bind(this));
@@ -4985,9 +5099,12 @@ var Promise = require('../promise');
 var SVGParser = require('./SVGParser.js');
 var utils = require('../utils');
 
-function SVGNodeContainer(node) {
+function SVGNodeContainer(node, options) {
   this.src = node;
   this.image = document.createElement('canvas');
+
+  this.scale = devicePixelRatio * (options.scale || 1);
+
   this.bb = null;
   var self = this;
 
@@ -5000,14 +5117,31 @@ function SVGNodeContainer(node) {
     return bounds;
   }.bind(this);
 
+  // first pass is to get bounding box only
+  // second pass is to render w/ scale
   this.promise = new Promise(function (resolve, reject) {
-    SVGParser.parse(this.image, node, {
-      renderCallback: function (obj) {
-        this.bb = obj.bounds;
-        resolve();
-      }.bind(this)
+    // dummy canvas for first pass
+    var canvas = document.createElement('canvas');
+    SVGParser.parse(canvas, node, {
+      renderCallback: function renderCallback(obj) {
+        self.bb = obj.bounds;
+
+        self.image.style.width = self.bb.width + "px";
+        self.image.style.height = self.bb.height + "px";
+
+        self.image.width = self.bb.width * self.scale;
+        self.image.height = self.bb.height * self.scale;
+
+        SVGParser.parse(self.image, node, {
+          ignoreDimensions: true,
+          scale: self.scale,
+          renderCallback: function renderCallback(obj) {
+            resolve();
+          }
+        });
+      }
     });
-  }.bind(this));
+  });
 }
 
 SVGNodeContainer.prototype = Object.create(SVGContainer.prototype);
@@ -5591,6 +5725,10 @@ function build(opts) {
   };
 
   svg.CanvasBoundingBox.apply = function (ctx, bb) {
+    if (svg.opts.ignoreDimensions == true) {
+      return;
+    }
+
     if (Math.floor(bb.width) !== Math.floor(this.width)) {
       ctx.canvas.width = this.width;
       ctx.canvas.style.width = ctx.canvas.width + 'px';
@@ -7427,6 +7565,7 @@ function build(opts) {
         ignoreAnimation: true,
         ignoreDimensions: true,
         ignoreClear: true,
+        scale: 1,
         scaleWidth: dw,
         scaleHeight: dh
       });
@@ -7930,8 +8069,8 @@ function build(opts) {
           ctx.canvas.style.height = ctx.canvas.height + 'px';
         }
       }
-      var cWidth = ctx.canvas.clientWidth || ctx.canvas.width;
-      var cHeight = ctx.canvas.clientHeight || ctx.canvas.height;
+      var cWidth = ctx.canvas.clientWidth || ctx.canvas.width / (svg.opts.scale || 1);
+      var cHeight = ctx.canvas.clientHeight || ctx.canvas.height / (svg.opts.scale || 1);
       if (svg.opts['ignoreDimensions'] == true && e.style('width').hasValue() && e.style('height').hasValue()) {
         cWidth = e.style('width').toPixels('x');
         cHeight = e.style('height').toPixels('y');
@@ -7964,6 +8103,18 @@ function build(opts) {
         e.attribute('width', true).value = svg.opts['scaleWidth'];
         e.attribute('height', true).value = svg.opts['scaleHeight'];
         e.attribute('transform', true).value += ' scale(' + 1.0 / xRatio + ',' + 1.0 / yRatio + ')';
+      }
+
+      if (svg.opts.scale != null) {
+        e.attribute('transform', true).value += ' scale(' + svg.opts.scale + ',' + svg.opts.scale + ')';
+
+        if (e.style('width').hasValue()) {
+          e.attribute('width', true).value = e.style('width').toPixels('x') * svg.opts.scale;
+        }
+
+        if (e.style('height').hasValue()) {
+          e.attribute('height', true).value = e.style('height').toPixels('y') * svg.opts.scale;
+        }
       }
 
       // clear and render

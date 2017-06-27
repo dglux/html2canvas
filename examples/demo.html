@@ -24,7 +24,7 @@
     <script type="text/javascript">
         window.onload = function () {
           var frame = document.createElement("iframe");
-          frame.src = 'client.html';
+          frame.src = 'htmlTest4.html';
           frame.width = '100%';
           frame.height = '100%';
           document.body.appendChild(frame);
@@ -38,6 +38,9 @@
 
               var image = document.createElement('img');
               image.src = canvas.toDataURL();
+              image.style.height = (canvas.height / devicePixelRatio) + "px";
+              image.style.width = (canvas.width / devicePixelRatio) + "px";
+
               document.body.appendChild(image);
               console.log("Hello #2");
             });

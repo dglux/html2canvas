@@ -3,9 +3,11 @@ var XHR = require('../xhr');
 var decode64 = require('../utils').decode64;
 var SVGParser = require('./SVGParser.js');
 
-function SVGContainer(src) {
+function SVGContainer(src, options) {
   this.src = src;
   this.image = document.createElement('canvas');
+
+  this.scale = devicePixelRatio * (options.scale || 1);
   var self = this;
 
   this.getBounds = function(bounds) {
@@ -17,14 +19,31 @@ function SVGContainer(src) {
     return bounds;
   };
 
+  // first pass is to get bounding box only
+  // second pass is to render w/ scale
   this.promise = (self.isInline(src) ? Promise.resolve(self.inlineFormatting(src)) : XHR(src))
     .then(function(svg) {
       return new Promise(function(resolve) {
-        SVGParser.parse(this.image, svg, {
-          renderCallback: function(obj) {
-            this.bb = obj.bounds;
-            resolve();
-          }.bind(this)
+        // dummy canvas for first pass
+        var canvas = document.createElement('canvas');
+        SVGParser.parse(canvas, node, {
+          renderCallback: function (obj) {
+            self.bb = obj.bounds;
+
+            self.image.style.width = self.bb.width + "px";
+            self.image.style.height = self.bb.height + "px";
+
+            self.image.width = self.bb.width * self.scale;
+            self.image.height = self.bb.height * self.scale;
+
+            SVGParser.parse(self.image, node, {
+              ignoreDimensions: true,
+              scale: self.scale,
+              renderCallback: function (obj) {
+                resolve();
+              }
+            });
+          }
         });
       }.bind(this));
     }.bind(this));

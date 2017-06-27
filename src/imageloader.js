@@ -64,7 +64,7 @@ ImageLoader.prototype.loadImage = function(imageData, container) {
   if(imageData.method === "url") {
     var src = imageData.args[0];
     if(this.isSVG(src) && !this.options.allowTaint) {
-      return new SVGContainer(src);
+      return new SVGContainer(src, this.options);
     } else if(src.match(/data:image\/.*;base64,/i)) {
       return new ImageContainer(src.replace(/url\(['"]{0,}|['"]{0,}\)$/ig, ''), false);
     } else if(this.isSameOrigin(src) || this.options.allowTaint === true || this.isSVG(src)) {
@@ -83,7 +83,7 @@ ImageLoader.prototype.loadImage = function(imageData, container) {
   } else if(imageData.method === "gradient") {
     return new WebkitGradientContainer(imageData, container);
   } else if(imageData.method === "svg") {
-    return new SVGNodeContainer(imageData.args[0]);
+    return new SVGNodeContainer(imageData.args[0], this.options);
   } else if(imageData.method === "IFRAME") {
     return new FrameContainer(imageData.args[0], this.options);
   } else {
