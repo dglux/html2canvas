@@ -869,6 +869,8 @@ function getBorderRadiusData(container, borders, bounds) {
 
       if(val.indexOf('%') !== -1) {
         arr[arr.indexOf(val)] = (asFloat(val) / 100) * size;
+      } else {
+        arr[arr.indexOf(val)] = Math.min(asFloat(val), size / 2);
       }
     });
 

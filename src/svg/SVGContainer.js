@@ -26,7 +26,7 @@ function SVGContainer(src, options) {
       return new Promise(function(resolve) {
         // dummy canvas for first pass
         var canvas = document.createElement('canvas');
-        SVGParser.parse(canvas, node, {
+        SVGParser.parse(canvas, svg, {
           renderCallback: function (obj) {
             self.bb = obj.bounds;
 
@@ -36,7 +36,7 @@ function SVGContainer(src, options) {
             self.image.width = self.bb.width * self.scale;
             self.image.height = self.bb.height * self.scale;
 
-            SVGParser.parse(self.image, node, {
+            SVGParser.parse(self.image, svg, {
               ignoreDimensions: true,
               scale: self.scale,
               renderCallback: function (obj) {
