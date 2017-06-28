@@ -535,13 +535,17 @@ NodeParser.prototype.paintText = function(container) {
   container.applyTextTransform();
   var characters = punycode.ucs2.decode(container.node.data);
   // character-by-character positioning if word-wrap: break-word
-  var textList = container.parent.css('wordWrap') !== 'break-word' &&
-      noLetterSpacing(container) &&
-      !hasUnicode(container.node.data) ?
-          getWords(characters) :
-          characters.map(function(character) {
+  var textListTest = container.parent.css('wordWrap') !== 'break-word' &&
+    noLetterSpacing(container) &&
+    !hasUnicode(container.node.data);
+
+  var textList = textListTest ? getWords(characters) : characters.map(function(character) {
     return punycode.ucs2.encode([character]);
   });
+
+  if (!textListTest) {
+    container.parent.node.style.fontVariantLigatures = 'none';
+  }
 
   var weight = container.parent.fontWeight();
   var size = container.parent.css('fontSize');

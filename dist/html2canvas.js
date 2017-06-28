@@ -1863,7 +1863,13 @@ function cloneCanvasContents(canvas, clonedCanvas) {
     if (clonedCanvas) {
       clonedCanvas.width = canvas.width;
       clonedCanvas.height = canvas.height;
-      clonedCanvas.getContext("2d").putImageData(canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height), 0, 0);
+
+      /* for web gl based canvases the 2d context is not available */
+      if (!canvas.getContext("2d")) {
+        clonedCanvas.getContext("2d").drawImage(canvas, 0, 0);
+      } else {
+        clonedCanvas.getContext("2d").putImageData(canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height), 0, 0);
+      }
     }
   } catch (e) {
     log("Unable to copy canvas content from", canvas, e);
@@ -3973,9 +3979,15 @@ NodeParser.prototype.paintText = function (container) {
   container.applyTextTransform();
   var characters = punycode.ucs2.decode(container.node.data);
   // character-by-character positioning if word-wrap: break-word
-  var textList = container.parent.css('wordWrap') !== 'break-word' && noLetterSpacing(container) && !hasUnicode(container.node.data) ? getWords(characters) : characters.map(function (character) {
+  var textListTest = container.parent.css('wordWrap') !== 'break-word' && noLetterSpacing(container) && !hasUnicode(container.node.data);
+
+  var textList = textListTest ? getWords(characters) : characters.map(function (character) {
     return punycode.ucs2.encode([character]);
   });
+
+  if (!textListTest) {
+    container.parent.node.style.fontVariantLigatures = 'none';
+  }
 
   var weight = container.parent.fontWeight();
   var size = container.parent.css('fontSize');
@@ -4724,6 +4736,7 @@ CanvasRenderer.prototype.shape = function (shape) {
 };
 
 CanvasRenderer.prototype.font = function (color, style, variant, weight, size, family) {
+  variant = /^(normal|small-caps)$/i.test(variant) ? variant : '';
   this.setFillStyle(color).font = [style, variant, weight, size].join(" ").split(",")[0] + ' ' + family;
 };
 
