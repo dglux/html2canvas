@@ -139,7 +139,8 @@ NodeContainer.prototype.parseBackgroundSize = function(bounds, image, index) {
   if(isPercentage(size[0])) {
     width = bounds.width * parseFloat(size[0]) / 100;
   } else if(/contain|cover/.test(size[0])) {
-    var targetRatio = bounds.width / bounds.height, currentRatio = image.width / image.height;
+    var targetRatio = bounds.width / bounds.height;
+    var currentRatio = image.width / image.height;
     return (targetRatio < currentRatio ^ size[0] === 'contain') ? {
       width: bounds.height * currentRatio,
       height: bounds.height

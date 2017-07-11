@@ -186,7 +186,7 @@ CanvasRenderer.prototype.text = function(text, left, bottom) {
   this.ctx.fillText(text, left, bottom);
 };
 
-CanvasRenderer.prototype.backgroundRepeatShape = function(imageContainer, backgroundPosition, size, bounds, left, top, width, height, borderData) {
+CanvasRenderer.prototype.backgroundRepeatShape = function(imageContainer, backgroundPosition, size, bounds, left, top, width, height, borderData, func) {
   var shape = [
     ["line", Math.round(left), Math.round(top)],
     ["line", Math.round(left + width), Math.round(top)],
@@ -194,15 +194,18 @@ CanvasRenderer.prototype.backgroundRepeatShape = function(imageContainer, backgr
     ["line", Math.round(left), Math.round(height + top)]
   ];
   this.clip([shape], function() {
-    this.renderBackgroundRepeat(imageContainer, backgroundPosition, size, bounds, borderData[3], borderData[0]);
+    this.renderBackgroundRepeat(imageContainer, backgroundPosition, size, bounds, borderData[3], borderData[0], func);
   }, this);
 };
 
-CanvasRenderer.prototype.renderBackgroundRepeat = function(imageContainer, backgroundPosition, size, bounds, borderLeft, borderTop) {
+CanvasRenderer.prototype.renderBackgroundRepeat = function(imageContainer, backgroundPosition, size, bounds, borderLeft, borderTop, func) {
   var offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft), offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
-  this.setFillStyle(this.ctx.createPattern(this.resizeImage(imageContainer, size), "repeat"));
+  
   this.ctx.translate(offsetX, offsetY);
+  this.ctx.scale(1 / this.scale, 1 / this.scale);
+  this.setFillStyle(this.ctx.createPattern(this.resizeImage(imageContainer, size), func || "repeat"));
   this.ctx.fill();
+  this.ctx.scale(this.scale, this.scale);
   this.ctx.translate(-offsetX, -offsetY);
 };
 
@@ -261,10 +264,10 @@ CanvasRenderer.prototype.resizeImage = function(imageContainer, size) {
   }
 
   var ctx, canvas = document.createElement('canvas');
-  canvas.width = size.width;
-  canvas.height = size.height;
+  canvas.width = size.width * this.scale;
+  canvas.height = size.height * this.scale;
   ctx = canvas.getContext("2d");
-  ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, size.width, size.height);
+  ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, size.width * this.scale, size.height * this.scale);
   return canvas;
 };
 

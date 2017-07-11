@@ -91,20 +91,20 @@ Renderer.prototype.renderBackgroundRepeating = function(container, bounds, image
   switch(repeat) {
     case "repeat-x":
     case "repeat no-repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + borderData[3], bounds.y + position.y + borderData[0], 99999, size.height, borderData);
+      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + borderData[3], bounds.y + position.y + borderData[0], 99999, size.height, borderData, "repeat-x");
       break;
     case "repeat-y":
     case "no-repeat repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + borderData[0], size.width, 99999, borderData);
+      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + borderData[0], size.width, 99999, borderData, "repeat-y");
       break;
     case "no-repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + position.y + borderData[0], size.width, size.height, borderData);
+      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + position.y + borderData[0], size.width, size.height, borderData, "no-repeat");
       break;
     default:
       this.renderBackgroundRepeat(imageContainer, position, size, {
         y: bounds.y,
         x: bounds.x
-      }, borderData[3], borderData[0]);
+      }, borderData[3], borderData[0], "repeat");
       break;
   }
 };
