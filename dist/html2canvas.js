@@ -3881,6 +3881,7 @@ NodeParser.prototype.paintElement = function (container) {
 
   this.renderer.clip(container.backgroundClip, function () {
     if (shadows.length > 0) {
+      // draw inset shadows
       shadows.forEach(function (shadow) {
         if (!shadow.inset) return;
 
@@ -3912,8 +3913,7 @@ NodeParser.prototype.paintElement = function (container) {
         var borderPoints = calculateCurvePoints(newBounds, radius, container.borders.borders);
 
         this.renderer.shape(this.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds));
-        this.renderer.ctx.rect(bounds.x - newBounds.width, newBounds.y - newBounds.height, newBounds.width * 3, newBounds.height * 3);
-        this.renderer.ctx.fill('evenodd');
+        this.renderer.drawInsetShadow(bounds.x - newBounds.width, newBounds.y - newBounds.height, newBounds.width * 3, newBounds.height * 3);
 
         this.renderer.clearShadow();
       }, this);
@@ -4808,6 +4808,11 @@ CanvasRenderer.prototype.setShadow = function (color, offsetX, offsetY, blur) {
 
 CanvasRenderer.prototype.clearShadow = function () {
   this.setVariable("shadowColor", "rgba(0,0,0,0)");
+};
+
+CanvasRenderer.prototype.drawInsetShadow = function (left, top, width, height) {
+  this.ctx.rect(left, top, width, height);
+  this.ctx.fill("evenodd");
 };
 
 CanvasRenderer.prototype.setOpacity = function (opacity) {

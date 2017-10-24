@@ -144,6 +144,11 @@ CanvasRenderer.prototype.clearShadow = function() {
   this.setVariable("shadowColor", "rgba(0,0,0,0)");
 };
 
+CanvasRenderer.prototype.drawInsetShadow = function(left, top, width, height) {
+  this.ctx.rect(left, top, width, height);
+  this.ctx.fill("evenodd");
+};
+
 CanvasRenderer.prototype.setOpacity = function(opacity) {
   this.ctx.globalAlpha = opacity;
 };
