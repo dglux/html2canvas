@@ -32,6 +32,8 @@ All below documentation should still be accurate. Here's a rather incomplete lis
 - Will work in Chrome 50+, solves issue with SVGElement.offset[Parent,Left,Top,Width,Height] no longer existing (this also allows for real Firefox support).
 - Add scaling support via a `scale` property, will also scale output width/height. Useful for embedding in PDF files, etc.
 - Added a `isDGLux` property. If this is enabled, window width/height will be calculated differently based on the overflowX/overflowY styles of the first child of the body.
+- If `isDGLux` is true and the .dgPage element has vertical or horizontal overflow, children with percentage-based width or height
+values will be adjusted correctly.
 
 To build, run `npm run build`, to start a watch server on port 8080, run `npm run watch`.
 
