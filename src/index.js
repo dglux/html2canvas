@@ -108,6 +108,9 @@ function getDocHeight(node, isDGLux) {
 }
 
 function html2canvas(nodeList, options) {
+  // reset dgPage to make sure html2canvas is somewhat "pure"
+  _dgPage = undefined;
+
   var index = html2canvasCloneIndex++;
   options = options || {};
   if(!options.debug) {
