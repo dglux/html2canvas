@@ -160,8 +160,8 @@ function html2canvas(nodeList, options) {
   }
 
   node.setAttribute(html2canvasNodeAttribute + index, index);
-  var width = options.width || getDocWidth(node, options.isDGLux);
-  var height = options.height || getDocHeight(node, options.isDGLux);
+  var width = parseInt(options.width) || getDocWidth(node, options.isDGLux);
+  var height = parseInt(options.height) || getDocHeight(node, options.isDGLux);
 
   // rewrite percentage-based height values to absolute
   if (options.isDGLux) {
