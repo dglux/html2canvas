@@ -44,7 +44,7 @@ function getDocWidth(node, isDGLux) {
     }
   });
 
-  if (isDGLux) {
+  if (isDGLux && !!dgPage) {
     const bounds = utils.getBounds(dgPage);
     arr.push(bounds.x + dgPage.clientWidth);
 
@@ -88,7 +88,7 @@ function getDocHeight(node, isDGLux) {
     return arr;
   });
 
-  if (isDGLux) {
+  if (isDGLux && !!dgPage) {
     const bounds = utils.getBounds(dgPage);
     arr.push(bounds.y + dgPage.clientHeight);
 
