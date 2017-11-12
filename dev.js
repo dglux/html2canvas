@@ -1,41 +1,50 @@
-var browserify = require('browserify');
-var watchify = require('watchify');
-var babelify = require('babelify');
+const fs = require("fs");
 
-var fs = require('fs');
+const browserify = require("browserify");
 
-var instance = browserify('src/index.js', {
+// browserify plugins
+const bubleify = require("bubleify");
+const derequire = require("derequire/plugin");
+const watchify = require("watchify");
+
+const instance = browserify("src/index.js", {
   cache: {},
   packageCache: {},
-  standalone: 'html2canvas'
+  standalone: "html2canvas"
 });
 
-instance.transform(babelify, {
-  presets: ['es2015'],
-  compact: false
+instance.transform(bubleify, {
+  bubleError: true
 });
 
-var i = 0;
+instance.plugin(derequire, [
+  {
+    from: "require",
+    to: "_dh2cr_"
+  }
+]);
+
+let bundleCount = 0;
 function bundle() {
-  i++;
-  console.log(`[BUNDLE] (${i} updates)`);
+  bundleCount++;
+  console.log(`[BUNDLE] (${bundleCount} updates)`);
+
   instance.bundle()
-    .on('error', function(err) {
+    .on("error", err => {
       console.log(err.message);
     })
-    .pipe(fs.createWriteStream('./dist/html2canvas.js'));
+    .pipe(fs.createWriteStream("./dist/html2canvas.js"));
 }
 
-if(process.argv.length >= 3 && process.argv[2] === 'watch') {
-  var express = require('express');
-  var app = express();
-
-  app.use(express.static(__dirname));
+if(process.argv.length >= 3 && process.argv[2] === "watch") {
+  const serve = require("serve");
+  serve(__dirname, {
+    port: 5000,
+    ignore: ["node_modules"]
+  });
 
   instance.plugin(watchify);
-  instance.on('update', bundle);
-
-  app.listen(8080);
+  instance.on("update", bundle);
 }
 
 bundle();
