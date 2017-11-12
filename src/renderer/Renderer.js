@@ -88,17 +88,18 @@ Renderer.prototype.renderBackgroundRepeating = function(container, bounds, image
   var size = container.parseBackgroundSize(bounds, imageContainer.image, index);
   var position = container.parseBackgroundPosition(bounds, imageContainer.image, index, size);
   var repeat = container.parseBackgroundRepeat(index);
+
   switch(repeat) {
     case "repeat-x":
     case "repeat no-repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + borderData[3], bounds.y + position.y + borderData[0], 99999, size.height, borderData, "repeat-x");
+      this.backgroundRepeatShape(container, imageContainer, position, size, bounds, bounds.x + borderData[3], bounds.y + position.y + borderData[0], 99999, size.height, borderData, "repeat-x");
       break;
     case "repeat-y":
     case "no-repeat repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + borderData[0], size.width, 99999, borderData, "repeat-y");
+      this.backgroundRepeatShape(container, imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + borderData[0], size.width, 99999, borderData, "repeat-y");
       break;
     case "no-repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + position.y + borderData[0], size.width, size.height, borderData, "no-repeat");
+      this.backgroundRepeatShape(container, imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + position.y + borderData[0], size.width, size.height, borderData, "no-repeat");
       break;
     default:
       this.renderBackgroundRepeat(imageContainer, position, size, {

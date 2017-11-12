@@ -126,6 +126,7 @@ function html2canvas(nodeList, options) {
   options.javascriptEnabled = typeof(options.javascriptEnabled) === "undefined" ? false : options.javascriptEnabled;
   options.imageTimeout = typeof(options.imageTimeout) === "undefined" ? 10000 : options.imageTimeout;
   options.renderer = typeof(options.renderer) === "function" ? options.renderer : CanvasRenderer;
+  options.drawBounds = !!options.drawBounds;
   options.strict = !!options.strict;
 
   if(typeof(nodeList) === "string") {

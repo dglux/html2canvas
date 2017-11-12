@@ -3010,6 +3010,7 @@ function html2canvas(nodeList, options) {
   options.javascriptEnabled = typeof options.javascriptEnabled === "undefined" ? false : options.javascriptEnabled;
   options.imageTimeout = typeof options.imageTimeout === "undefined" ? 10000 : options.imageTimeout;
   options.renderer = typeof options.renderer === "function" ? options.renderer : CanvasRenderer;
+  options.drawBounds = !!options.drawBounds;
   options.strict = !!options.strict;
 
   if (typeof nodeList === "string") {
@@ -3216,6 +3217,7 @@ function NodeContainer(node, parent) {
 NodeContainer.prototype.cloneTo = function (stack) {
   stack.visible = this.visible;
   stack.borders = this.borders;
+  stack.drawnBounds = this.drawnBounds;
   stack.bounds = this.bounds;
   stack.clip = this.clip;
   stack.backgroundClip = this.backgroundClip;
@@ -3315,22 +3317,30 @@ NodeContainer.prototype.parseBackgroundSize = function (bounds, image, index) {
   var size = this.cssList("backgroundSize", index);
   var width, height;
 
-  if (isPercentage(size[0])) {
-    width = bounds.width * parseFloat(size[0]) / 100;
-  } else if (/contain|cover/.test(size[0])) {
+  if (size[0] === 'auto' && size[1] === 'auto') {
+    return { width: image.width, height: image.height };
+  }
+
+  if (/contain|cover/.test(size[0])) {
     var targetRatio = bounds.width / bounds.height;
     var currentRatio = image.width / image.height;
-    return targetRatio < currentRatio ^ size[0] === 'contain' ? {
+
+    return targetRatio < currentRatio ^ size[0] === "contain" ? {
       width: bounds.height * currentRatio,
       height: bounds.height
-    } : { width: bounds.width, height: bounds.width / currentRatio };
+    } : {
+      width: bounds.width,
+      height: bounds.width / currentRatio
+    };
+  }
+
+  if (isPercentage(size[0])) {
+    width = bounds.width * parseFloat(size[0]) / 100;
   } else {
     width = parseInt(size[0], 10);
   }
 
-  if (size[0] === 'auto' && size[1] === 'auto') {
-    height = image.height;
-  } else if (size[1] === 'auto') {
+  if (size[1] === 'auto') {
     height = width / image.width * image.height;
   } else if (isPercentage(size[1])) {
     height = bounds.height * parseFloat(size[1]) / 100;
@@ -3603,7 +3613,12 @@ NodeParser.prototype.calculateOverflowClips = function () {
       if (isPseudoElement(container)) {
         container.appendToDOM();
       }
+
       container.borders = this.parseBorders(container);
+
+      if (this.options.drawBounds) {
+        container.drawnBounds = this.parseDrawnBounds(container);
+      }
 
       var hasOverflowClip = container.css('overflow') === "hidden" || container.css('overflow') === "scroll" || container.css('overflow') === "auto" && (container.node.scrollWidth >= container.node.clientWidth || container.node.scrollHeight >= container.node.clientHeight);
 
@@ -3925,6 +3940,10 @@ NodeParser.prototype.paintElement = function (container) {
 
   this.renderer.clip(container.clip, function () {
     this.renderer.renderBorders(container.borders.borders);
+
+    if (this.options.drawBounds) {
+      this.renderer.renderBorders(container.drawnBounds.borders);
+    }
   }, this);
 
   function drawSvg() {
@@ -4099,11 +4118,13 @@ var borderColorTransforms = {
 NodeParser.prototype.parseBorders = function (container) {
   var nodeBounds = container.parseBounds();
   var borders = ["Top", "Right", "Bottom", "Left"].map(function (side, index) {
-    var style = container.css('border' + side + 'Style');
+    var style = container.css("border" + side + "Style");
     var color = container.color('border' + side + 'Color');
+
     if (style === "inset" && color.isBlack()) {
       color = new Color([255, 255, 255, color.a]); // this is wrong, but
     }
+
     var colorTransform = borderColorTransforms[style] ? borderColorTransforms[style][index] : null;
     return {
       width: container.cssInt('border' + side + 'Width'),
@@ -4111,11 +4132,32 @@ NodeParser.prototype.parseBorders = function (container) {
       args: null
     };
   });
+
   var radius = getBorderRadiusData(container, borders);
   var borderPoints = calculateCurvePoints(nodeBounds, radius, borders);
 
   return {
     clip: this.parseBackgroundClip(container, borderPoints, borders, radius, nodeBounds),
+    borders: calculateBorders(borders, nodeBounds, borderPoints, radius)
+  };
+};
+
+NodeParser.prototype.parseDrawnBounds = function (container) {
+  var nodeBounds = container.parseBounds();
+  var color = new Color([Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), Math.floor(Math.random() * 255), 1]);
+
+  var borders = ["Top", "Right", "Bottom", "Left"].map(function (side) {
+    return {
+      width: 2,
+      color: color,
+      args: null
+    };
+  });
+
+  var radius = getBorderRadiusData(container, borders);
+  var borderPoints = calculateCurvePoints(nodeBounds, radius, borders);
+
+  return {
     borders: calculateBorders(borders, nodeBounds, borderPoints, radius)
   };
 };
@@ -4667,268 +4709,335 @@ PseudoElementContainer.prototype.PSEUDO_HIDE_ELEMENT_CLASS_AFTER = "___html2canv
 module.exports = PseudoElementContainer;
 
 },{"./nodecontainer":20}],26:[function(require,module,exports){
-'use strict';
+"use strict";
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-var Renderer = require('./Renderer');
-var LinearGradientContainer = require('../gradient/LinearGradientContainer');
-var RadialGradientContainer = require('../gradient/RadialGradientContainer');
-var log = require('../log');
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-function CanvasRenderer(width, height, imageLoader, options) {
-  Renderer.apply(this, arguments);
-  this.canvas = this.options.canvas || document.createElement("canvas");
-  this.scale = devicePixelRatio * (options.scale || 1);
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-  if (!this.options.canvas) {
-    this.canvas.width = width * this.scale;
-    this.canvas.style.width = width * (options.scale || 1) + 'px';
-    this.canvas.height = height * this.scale;
-    this.canvas.style.height = height * (options.scale || 1) + 'px';
-  }
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-  this.ctx = this.canvas.getContext("2d");
-  this.taintCtx = document.createElement("canvas").getContext("2d");
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-  this.ctx.scale(this.scale, this.scale);
+var Renderer = require("./Renderer");
+var LinearGradientContainer = require("../gradient/LinearGradientContainer");
+var RadialGradientContainer = require("../gradient/RadialGradientContainer");
+var log = require("../log");
 
-  this.ctx.textBaseline = "bottom";
-  this.variables = {};
-  this.transforms = {};
-  this.stackDepth = 1;
-  log("Initialized CanvasRenderer with size", width, "x", height);
+function hasEntries(array) {
+  return !!array.length;
 }
 
-CanvasRenderer.prototype = Object.create(Renderer.prototype);
-
-CanvasRenderer.prototype.save = function () {
-  this.ctx.save();
-  this.stackDepth++;
-};
-
-CanvasRenderer.prototype.restore = function () {
-  this.ctx.restore();
-  delete this.transforms[this.stackDepth.toString()];
-  this.stackDepth--;
-};
-
-CanvasRenderer.prototype.setFillStyle = function (fillStyle) {
-  this.ctx.fillStyle = (typeof fillStyle === 'undefined' ? 'undefined' : _typeof(fillStyle)) === "object" && !!fillStyle.isColor ? fillStyle.toString() : fillStyle;
-  return this.ctx;
-};
-
-CanvasRenderer.prototype.rectangle = function (left, top, width, height, color) {
-  this.setFillStyle(color).fillRect(left, top, width, height);
-};
-
-CanvasRenderer.prototype.circle = function (left, top, size, color) {
-  this.setFillStyle(color);
-  this.ctx.beginPath();
-  this.ctx.arc(left + size / 2, top + size / 2, size / 2, 0, Math.PI * 2, true);
-  this.ctx.closePath();
-  this.ctx.fill();
-};
-
-CanvasRenderer.prototype.circleStroke = function (left, top, size, color, stroke, strokeColor) {
-  this.circle(left, top, size, color);
-  this.ctx.strokeStyle = strokeColor.toString();
-  this.ctx.stroke();
-};
-
-CanvasRenderer.prototype.drawShape = function (shape, color) {
-  this.shape(shape);
-  this.setFillStyle(color).fill();
-};
-
-CanvasRenderer.prototype.taints = function (imageContainer) {
-  if (imageContainer.tainted === null) {
-    this.taintCtx.drawImage(imageContainer.image, 0, 0);
-    try {
-      this.taintCtx.getImageData(0, 0, 1, 1);
-      imageContainer.tainted = false;
-    } catch (e) {
-      this.taintCtx = document.createElement("canvas").getContext("2d");
-      imageContainer.tainted = true;
-    }
-  }
-
-  return imageContainer.tainted;
-};
-
-CanvasRenderer.prototype.drawImage = function (imageContainer, sx, sy, sw, sh, dx, dy, dw, dh) {
-  if (!this.taints(imageContainer) || this.options.allowTaint) {
-    this.ctx.drawImage(imageContainer.image, sx, sy, sw, sh, dx, dy, dw, dh);
-  }
-};
-
-CanvasRenderer.prototype.clip = function (shapes, callback, context) {
-  if (shapes.length === 0) return;
-
-  this.save();
-  this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
-
-  /*
-    shapes.filter(hasEntries).forEach(function(shape) {
-      console.log(shape);
-      this.ctx.strokeStyle = 'rgb(' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255) + ',' + Math.floor(Math.random() * 255) + ')';
-      this.shape(shape).stroke();
-    }, this);
-  */
-
-  shapes.filter(hasEntries).forEach(function (shape) {
-    if (shape[0] === 'transform') {
-      this.setTransform(shape[1]);
-      return;
-    }
-    this.shape(shape).clip();
-  }, this);
-  callback.call(context);
-  this.restore();
-};
-
-CanvasRenderer.prototype.shape = function (shape) {
-  this.ctx.beginPath();
-  shape.forEach(function (point, index) {
-    if (point[0] === "rect") {
-      this.ctx.rect.apply(this.ctx, point.slice(1));
-    } else {
-      this.ctx[index === 0 ? "moveTo" : point[0] + "To"].apply(this.ctx, point.slice(1));
-    }
-  }, this);
-  this.ctx.closePath();
-  return this.ctx;
-};
-
-CanvasRenderer.prototype.font = function (color, style, variant, weight, size, family) {
-  variant = /^(normal|small-caps)$/i.test(variant) ? variant : '';
-  this.setFillStyle(color).font = [style, variant, weight, size].join(" ").split(",")[0] + ' ' + family;
-};
-
-CanvasRenderer.prototype.setShadow = function (color, offsetX, offsetY, blur) {
-  this.setVariable("shadowColor", color.toString()).setVariable("shadowOffsetX", offsetX).setVariable("shadowOffsetY", offsetY).setVariable("shadowBlur", blur);
-};
-
-CanvasRenderer.prototype.clearShadow = function () {
-  this.setVariable("shadowColor", "rgba(0,0,0,0)");
-};
-
-CanvasRenderer.prototype.drawInsetShadow = function (left, top, width, height) {
-  this.ctx.rect(left, top, width, height);
-  this.ctx.fill("evenodd");
-};
-
-CanvasRenderer.prototype.setOpacity = function (opacity) {
-  this.ctx.globalAlpha = opacity;
-};
-
-CanvasRenderer.prototype.getTransform = function () {
-  var a = this.stackDepth;
-  while (--a > 0) {
-    if (typeof this.transforms[a.toString()] !== 'undefined') {
-      var transform = this.transforms[a.toString()];
-      if (typeof transform.x1 !== 'undefined') continue;
-      if (transform.matrix.join(',') === '1,0,0,1,0,0') continue;
-      return transform;
-    }
-  }
-
+function identityMatrix() {
   return {
     origin: [0, 0],
-    matrix: [this.scale, 0, 0, this.scale, 0, 0]
+    matrix: [1, 0, 0, 1, 0, 0]
   };
-};
+}
 
-CanvasRenderer.prototype.setTransform = function (transform) {
-  this.ctx.translate(transform.origin[0], transform.origin[1]);
-  this.transforms[this.stackDepth.toString()] = transform;
-  this.ctx.transform.apply(this.ctx, transform.matrix);
-  this.ctx.translate(-transform.origin[0], -transform.origin[1]);
-};
+function isIdentityMatrix(transform) {
+  return transform.matrix.join(",") === "1,0,0,1,0,0";
+}
 
-CanvasRenderer.prototype.setVariable = function (property, value) {
-  if (this.variables[property] !== value) {
-    this.variables[property] = this.ctx[property] = value;
+var CanvasRenderer = function (_Renderer) {
+  _inherits(CanvasRenderer, _Renderer);
+
+  /*
+  canvas: HTMLCanvasElement;
+  scale: num;
+   ctx: CanvasRenderingContext2D;
+  taintCtx: CanvasRenderingContext2D;
+   variables: Map<string, object>;
+   transforms: Map<int, object>;
+  stackDepth: int;
+  */
+
+  function CanvasRenderer(width, height, imageLoader, options) {
+    _classCallCheck(this, CanvasRenderer);
+
+    var _this = _possibleConstructorReturn(this, (CanvasRenderer.__proto__ || Object.getPrototypeOf(CanvasRenderer)).call(this, width, height, imageLoader, options));
+
+    _this.canvas = _this.options.canvas || document.createElement("canvas");
+    _this.scale = devicePixelRatio * (options.scale || 1);
+
+    if (!_this.options.canvas) {
+      _this.canvas.width = width * _this.scale;
+      _this.canvas.style.width = width * (options.scale || 1) + "px";
+      _this.canvas.height = height * _this.scale;
+      _this.canvas.style.height = height * (options.scale || 1) + "px";
+    }
+
+    _this.ctx = _this.canvas.getContext("2d");
+    _this.taintCtx = document.createElement("canvas").getContext("2d");
+
+    _this.ctx.scale(_this.scale, _this.scale);
+    _this.ctx.textBaseline = "bottom";
+
+    _this.variables = new Map();
+
+    _this.transforms = new Map();
+    _this.stackDepth = 1;
+
+    log("Initialized CanvasRenderer with size", width, "x", height);
+    return _this;
   }
 
-  return this;
-};
+  _createClass(CanvasRenderer, [{
+    key: "save",
+    value: function save() {
+      this.ctx.save();
+      this.stackDepth++;
+    }
+  }, {
+    key: "restore",
+    value: function restore(popStack) {
+      this.ctx.restore();
 
-CanvasRenderer.prototype.text = function (text, left, bottom) {
-  this.ctx.fillText(text, left, bottom);
-};
+      if (!!popStack) {
+        this.transforms.delete(this.stackDepth);
+        this.stackDepth--;
+      }
+    }
+  }, {
+    key: "setFillStyle",
+    value: function setFillStyle(fillStyle) {
+      this.ctx.fillStyle = (typeof fillStyle === "undefined" ? "undefined" : _typeof(fillStyle)) === "object" && !!fillStyle.isColor ? fillStyle.toString() : fillStyle;
 
-CanvasRenderer.prototype.backgroundRepeatShape = function (imageContainer, backgroundPosition, size, bounds, left, top, width, height, borderData, func) {
-  var shape = [["line", Math.round(left), Math.round(top)], ["line", Math.round(left + width), Math.round(top)], ["line", Math.round(left + width), Math.round(height + top)], ["line", Math.round(left), Math.round(height + top)]];
-  this.clip([shape], function () {
-    this.renderBackgroundRepeat(imageContainer, backgroundPosition, size, bounds, borderData[3], borderData[0], func);
-  }, this);
-};
+      return this.ctx;
+    }
+  }, {
+    key: "rectangle",
+    value: function rectangle(left, top, width, height, color) {
+      this.setFillStyle(color).fillRect(left, top, width, height);
+    }
+  }, {
+    key: "circle",
+    value: function circle(left, top, size, color) {
+      this.setFillStyle(color);
 
-CanvasRenderer.prototype.renderBackgroundRepeat = function (imageContainer, backgroundPosition, size, bounds, borderLeft, borderTop, func) {
-  var offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft),
-      offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
+      this.ctx.beginPath();
+      this.ctx.arc(left + size / 2, top + size / 2, size / 2, 0, Math.PI * 2, true);
+      this.ctx.closePath();
 
-  this.ctx.translate(offsetX, offsetY);
-  this.ctx.scale(1 / this.scale, 1 / this.scale);
-  this.setFillStyle(this.ctx.createPattern(this.resizeImage(imageContainer, size), func || "repeat"));
-  this.ctx.fill();
-  this.ctx.scale(this.scale, this.scale);
-  this.ctx.translate(-offsetX, -offsetY);
-};
+      this.ctx.fill();
+    }
+  }, {
+    key: "circleStroke",
+    value: function circleStroke(left, top, size, color, stroke, strokeColor) {
+      this.circle(left, top, size, color);
+      this.ctx.strokeStyle = strokeColor.toString();
+      this.ctx.stroke();
+    }
+  }, {
+    key: "drawShape",
+    value: function drawShape(shape, color) {
+      this.shape(shape);
+      this.setFillStyle(color).fill();
+    }
+  }, {
+    key: "taints",
+    value: function taints(imageContainer) {
+      if (imageContainer.tainted === null) {
+        this.taintCtx.drawImage(imageContainer.image, 0, 0);
+        try {
+          this.taintCtx.getImageData(0, 0, 1, 1);
+          imageContainer.tainted = false;
+        } catch (e) {
+          this.taintCtx = document.createElement("canvas").getContext("2d");
+          imageContainer.tainted = true;
+        }
+      }
 
-CanvasRenderer.prototype.renderBackgroundGradient = function (gradientImage, bounds) {
-  var gradient;
-  if (gradientImage instanceof LinearGradientContainer) {
-    gradient = this.ctx.createLinearGradient(bounds.x + gradientImage.x0, bounds.y + gradientImage.y0, bounds.x + gradientImage.x1, bounds.y + gradientImage.y1);
-  } else if (gradientImage instanceof RadialGradientContainer) {
-    if (typeof gradientImage.scaleX !== 'undefined' || typeof gradientImage.scaleY !== 'undefined') {
-      gradientImage.scaleX = gradientImage.scaleX || 1;
-      gradientImage.scaleY = gradientImage.scaleY || 1;
+      return imageContainer.tainted;
+    }
+  }, {
+    key: "drawImage",
+    value: function drawImage(imageContainer, sx, sy, sw, sh, dx, dy, dw, dh) {
+      if (!this.taints(imageContainer) || this.options.allowTaint) {
+        this.ctx.drawImage(imageContainer.image, sx, sy, sw, sh, dx, dy, dw, dh);
+      }
+    }
+  }, {
+    key: "clip",
+    value: function clip(shapes, callback, context) {
+      if (!shapes.length) return;
 
-      gradient = this.ctx.createRadialGradient((bounds.x + gradientImage.x0) / gradientImage.scaleX, (bounds.y + gradientImage.y0) / gradientImage.scaleY, gradientImage.r, (bounds.x + gradientImage.x0) / gradientImage.scaleX, (bounds.y + gradientImage.y0) / gradientImage.scaleY, 0);
+      this.save();
+      this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+
+      shapes.filter(hasEntries).forEach(function (shape) {
+        if (shape[0] == "transform") {
+          this.setTransform(shape[1]);
+          return;
+        }
+
+        this.shape(shape).clip();
+      }, this);
+
+      callback.call(context);
+      this.restore(true);
+    }
+  }, {
+    key: "shape",
+    value: function shape(_shape) {
+      this.ctx.beginPath();
+      _shape.forEach(function (point, index) {
+        if (point[0] === "rect") {
+          this.ctx.rect.apply(this.ctx, point.slice(1));
+        } else {
+          this.ctx[index === 0 ? "moveTo" : point[0] + "To"].apply(this.ctx, point.slice(1));
+        }
+      }, this);
+      this.ctx.closePath();
+      return this.ctx;
+    }
+  }, {
+    key: "font",
+    value: function font(color, style, variant, weight, size, family) {
+      variant = /^(normal|small-caps)$/i.test(variant) ? variant : "";
+      this.setFillStyle(color).font = [style, variant, weight, size].join(" ").split(",")[0] + " " + family;
+    }
+  }, {
+    key: "setShadow",
+    value: function setShadow(color, offsetX, offsetY, blur) {
+      this.setVariable("shadowColor", color.toString()).setVariable("shadowOffsetX", offsetX).setVariable("shadowOffsetY", offsetY).setVariable("shadowBlur", blur);
+    }
+  }, {
+    key: "clearShadow",
+    value: function clearShadow() {
+      this.setVariable("shadowColor", "rgba(0,0,0,0)");
+    }
+  }, {
+    key: "drawInsetShadow",
+    value: function drawInsetShadow(left, top, width, height) {
+      this.ctx.rect(left, top, width, height);
+      this.ctx.fill("evenodd");
+    }
+  }, {
+    key: "setOpacity",
+    value: function setOpacity(opacity) {
+      this.ctx.globalAlpha = opacity;
+    }
+  }, {
+    key: "getTransform",
+    value: function getTransform() {
+      var a = this.stackDepth;
+      while (--a > 0) {
+        if (this.transforms.has(a)) {
+          var transform = this.transforms.get(a);
+          if (typeof transform.x1 !== "undefined") continue;
+          if (isIdentityMatrix(transform)) continue;
+          return transform;
+        }
+      }
+
+      return identityMatrix();
+    }
+  }, {
+    key: "setTransform",
+    value: function setTransform(transform) {
+      this.ctx.translate(transform.origin[0], transform.origin[1]);
+      this.transforms[this.stackDepth.toString()] = transform;
+      this.ctx.transform.apply(this.ctx, transform.matrix);
+      this.ctx.translate(-transform.origin[0], -transform.origin[1]);
+    }
+  }, {
+    key: "setVariable",
+    value: function setVariable(property, value) {
+      if (!this.variables.has(property) || this.variables.get(property) !== value) {
+        this.variables[property] = this.ctx[property] = value;
+      }
+
+      return this;
+    }
+  }, {
+    key: "text",
+    value: function text(_text, left, bottom) {
+      this.ctx.fillText(_text, left, bottom);
+    }
+  }, {
+    key: "backgroundRepeatShape",
+    value: function backgroundRepeatShape(container, imageContainer, backgroundPosition, size, bounds, left, top, width, height, borderData, func) {
+      var shape = [["line", Math.round(left), Math.round(top)], ["line", Math.round(left + width), Math.round(top)], ["line", Math.round(left + width), Math.round(height + top)], ["line", Math.round(left), Math.round(height + top)]];
+
+      var arr = [];
+      if (container.hasTransform()) {
+        arr.push(["transform", this.getTransform()]);
+      }
+
+      arr.push(shape);
+
+      this.clip(arr, function () {
+        this.renderBackgroundRepeat(imageContainer, backgroundPosition, size, bounds, borderData[3], borderData[0], func);
+      }, this);
+    }
+  }, {
+    key: "renderBackgroundRepeat",
+    value: function renderBackgroundRepeat(imageContainer, backgroundPosition, size, bounds, borderLeft, borderTop, func) {
+      var offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft),
+          offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
+
+      this.ctx.translate(offsetX, offsetY);
+      this.ctx.scale(1 / this.scale, 1 / this.scale);
+      this.setFillStyle(this.ctx.createPattern(this.resizeImage(imageContainer, size), func || "repeat"));
+      this.ctx.fill();
+      this.ctx.scale(this.scale, this.scale);
+      this.ctx.translate(-offsetX, -offsetY);
+    }
+  }, {
+    key: "renderBackgroundGradient",
+    value: function renderBackgroundGradient(gradientImage, bounds) {
+      var gradient;
+      if (gradientImage instanceof LinearGradientContainer) {
+        gradient = this.ctx.createLinearGradient(bounds.x + gradientImage.x0, bounds.y + gradientImage.y0, bounds.x + gradientImage.x1, bounds.y + gradientImage.y1);
+      } else if (gradientImage instanceof RadialGradientContainer) {
+        if (typeof gradientImage.scaleX !== 'undefined' || typeof gradientImage.scaleY !== 'undefined') {
+          gradientImage.scaleX = gradientImage.scaleX || 1;
+          gradientImage.scaleY = gradientImage.scaleY || 1;
+
+          gradient = this.ctx.createRadialGradient((bounds.x + gradientImage.x0) / gradientImage.scaleX, (bounds.y + gradientImage.y0) / gradientImage.scaleY, gradientImage.r, (bounds.x + gradientImage.x0) / gradientImage.scaleX, (bounds.y + gradientImage.y0) / gradientImage.scaleY, 0);
+
+          gradientImage.colorStops.forEach(function (colorStop) {
+            gradient.addColorStop(colorStop.stop, colorStop.color.toString());
+          });
+
+          var currentTransform = this.ctx.currentTransform;
+          this.ctx.setTransform(gradientImage.scaleX * this.scale, 0, 0, gradientImage.scaleY * this.scale, 0, 0);
+          this.rectangle(bounds.x / gradientImage.scaleX, bounds.y / gradientImage.scaleY, bounds.width, bounds.height, gradient);
+
+          // reset the old transform
+          this.ctx.currentTransform = currentTransform;
+          return;
+        }
+
+        gradient = this.ctx.createRadialGradient(bounds.x + gradientImage.x0, bounds.y + gradientImage.y0, gradientImage.r, bounds.x + gradientImage.x0, bounds.y + gradientImage.y0, 0);
+      }
 
       gradientImage.colorStops.forEach(function (colorStop) {
         gradient.addColorStop(colorStop.stop, colorStop.color.toString());
       });
 
-      var currentTransform = this.ctx.currentTransform;
-      this.ctx.setTransform(gradientImage.scaleX * this.scale, 0, 0, gradientImage.scaleY * this.scale, 0, 0);
-      this.rectangle(bounds.x / gradientImage.scaleX, bounds.y / gradientImage.scaleY, bounds.width, bounds.height, gradient);
-
-      // reset the old transform
-      this.ctx.currentTransform = currentTransform;
-      return;
+      this.rectangle(bounds.x, bounds.y, bounds.width, bounds.height, gradient);
     }
+  }, {
+    key: "resizeImage",
+    value: function resizeImage(imageContainer, size) {
+      var image = imageContainer.image;
 
-    gradient = this.ctx.createRadialGradient(bounds.x + gradientImage.x0, bounds.y + gradientImage.y0, gradientImage.r, bounds.x + gradientImage.x0, bounds.y + gradientImage.y0, 0);
-  }
+      var ctx,
+          canvas = document.createElement('canvas');
+      canvas.width = size.width * this.scale;
+      canvas.height = size.height * this.scale;
+      ctx = canvas.getContext("2d");
+      ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, size.width * this.scale, size.height * this.scale);
+      return canvas;
+    }
+  }]);
 
-  gradientImage.colorStops.forEach(function (colorStop) {
-    gradient.addColorStop(colorStop.stop, colorStop.color.toString());
-  });
-
-  this.rectangle(bounds.x, bounds.y, bounds.width, bounds.height, gradient);
-};
-
-CanvasRenderer.prototype.resizeImage = function (imageContainer, size) {
-  var image = imageContainer.image;
-  if (image.width === size.width && image.height === size.height) {
-    return image;
-  }
-
-  var ctx,
-      canvas = document.createElement('canvas');
-  canvas.width = size.width * this.scale;
-  canvas.height = size.height * this.scale;
-  ctx = canvas.getContext("2d");
-  ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, size.width * this.scale, size.height * this.scale);
-  return canvas;
-};
-
-function hasEntries(array) {
-  return array.length > 0;
-}
+  return CanvasRenderer;
+}(Renderer);
 
 module.exports = CanvasRenderer;
 
@@ -5015,17 +5124,18 @@ Renderer.prototype.renderBackgroundRepeating = function (container, bounds, imag
   var size = container.parseBackgroundSize(bounds, imageContainer.image, index);
   var position = container.parseBackgroundPosition(bounds, imageContainer.image, index, size);
   var repeat = container.parseBackgroundRepeat(index);
+
   switch (repeat) {
     case "repeat-x":
     case "repeat no-repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + borderData[3], bounds.y + position.y + borderData[0], 99999, size.height, borderData, "repeat-x");
+      this.backgroundRepeatShape(container, imageContainer, position, size, bounds, bounds.x + borderData[3], bounds.y + position.y + borderData[0], 99999, size.height, borderData, "repeat-x");
       break;
     case "repeat-y":
     case "no-repeat repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + borderData[0], size.width, 99999, borderData, "repeat-y");
+      this.backgroundRepeatShape(container, imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + borderData[0], size.width, 99999, borderData, "repeat-y");
       break;
     case "no-repeat":
-      this.backgroundRepeatShape(imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + position.y + borderData[0], size.width, size.height, borderData, "no-repeat");
+      this.backgroundRepeatShape(container, imageContainer, position, size, bounds, bounds.x + position.x + borderData[3], bounds.y + position.y + borderData[0], size.width, size.height, borderData, "no-repeat");
       break;
     default:
       this.renderBackgroundRepeat(imageContainer, position, size, {
@@ -8394,7 +8504,7 @@ exports.getBounds = function (node) {
     var clientRect = node.getBoundingClientRect();
     var width = node.tagName === 'svg' || node.offsetWidth == null ? clientRect.width : node.offsetWidth;
 
-    return new BoundingBox(clientRect.left, clientRect.top, clientRect.left + width, clientRect.bottom || clientRect.top + clientRect.height);
+    return new BoundingBox(Math.floor(clientRect.left), Math.floor(clientRect.top), Math.floor(clientRect.left + width), Math.floor(clientRect.bottom || clientRect.top + clientRect.height));
   }
   return new BoundingBox();
 };
@@ -8414,7 +8524,7 @@ exports.offsetBounds = function (node) {
     return new BoundingBox(left + parent.x, top + parent.y, left + parent.x + parent.width, top + parent.y + parent.height);
   }
 
-  return new BoundingBox(node.offsetLeft + parent.x, node.offsetTop + parent.y, node.offsetLeft + parent.x + node.offsetWidth, node.offsetTop + node.offsetHeight + parent.y);
+  return new BoundingBox(Math.floor(node.offsetLeft + parent.x), Math.floor(node.offsetTop + parent.y), Math.floor(node.offsetLeft + parent.x + node.offsetWidth), Math.floor(node.offsetTop + node.offsetHeight + parent.y));
 };
 
 exports.offsetParent = function (node) {

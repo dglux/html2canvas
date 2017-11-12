@@ -27,10 +27,10 @@ exports.getBounds = function(node) {
     var clientRect = node.getBoundingClientRect();
     var width = (node.tagName === 'svg' || node.offsetWidth == null) ? clientRect.width : node.offsetWidth;
 
-    return new BoundingBox(clientRect.left,
-                           clientRect.top,
-                           clientRect.left + width,
-                           clientRect.bottom || (clientRect.top + clientRect.height));
+    return new BoundingBox(Math.floor(clientRect.left),
+                           Math.floor(clientRect.top),
+                           Math.floor(clientRect.left + width),
+                           Math.floor(clientRect.bottom || (clientRect.top + clientRect.height)));
   }
   return new BoundingBox();
 };
@@ -55,10 +55,10 @@ exports.offsetBounds = function(node) {
   }
 
   return new BoundingBox(
-    node.offsetLeft + parent.x,
-    node.offsetTop + parent.y,
-    node.offsetLeft + parent.x + node.offsetWidth,
-    node.offsetTop + node.offsetHeight + parent.y);
+    Math.floor(node.offsetLeft + parent.x),
+    Math.floor(node.offsetTop + parent.y),
+    Math.floor(node.offsetLeft + parent.x + node.offsetWidth),
+    Math.floor(node.offsetTop + node.offsetHeight + parent.y));
 };
 
 exports.offsetParent = function(node) {

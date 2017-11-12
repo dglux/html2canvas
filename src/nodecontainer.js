@@ -28,6 +28,7 @@ function NodeContainer(node, parent) {
 NodeContainer.prototype.cloneTo = function(stack) {
   stack.visible = this.visible;
   stack.borders = this.borders;
+  stack.drawnBounds = this.drawnBounds;
   stack.bounds = this.bounds;
   stack.clip = this.clip;
   stack.backgroundClip = this.backgroundClip;
@@ -136,22 +137,32 @@ NodeContainer.prototype.parseBackgroundSize = function(bounds, image, index) {
   var size = this.cssList("backgroundSize", index);
   var width, height;
 
-  if(isPercentage(size[0])) {
-    width = bounds.width * parseFloat(size[0]) / 100;
-  } else if(/contain|cover/.test(size[0])) {
+  if(size[0] === 'auto' && size[1] === 'auto') {
+    return { width: image.width, height: image.height };
+  }
+
+  if (/contain|cover/.test(size[0])) {
     var targetRatio = bounds.width / bounds.height;
     var currentRatio = image.width / image.height;
-    return (targetRatio < currentRatio ^ size[0] === 'contain') ? {
-      width: bounds.height * currentRatio,
-      height: bounds.height
-    } : {width: bounds.width, height: bounds.width / currentRatio};
+
+    return (targetRatio < currentRatio) ^ (size[0] === "contain") ?
+      {
+        width: bounds.height * currentRatio,
+        height: bounds.height
+      } :
+      {
+        width: bounds.width,
+        height: bounds.width / currentRatio
+      };
+  }
+  
+  if(isPercentage(size[0])) {
+    width = bounds.width * parseFloat(size[0]) / 100;
   } else {
     width = parseInt(size[0], 10);
   }
 
-  if(size[0] === 'auto' && size[1] === 'auto') {
-    height = image.height;
-  } else if(size[1] === 'auto') {
+  if (size[1] === 'auto') {
     height = width / image.width * image.height;
   } else if(isPercentage(size[1])) {
     height = bounds.height * parseFloat(size[1]) / 100;
@@ -163,7 +174,7 @@ NodeContainer.prototype.parseBackgroundSize = function(bounds, image, index) {
     width = height / image.height * image.width;
   }
 
-  return {width: width, height: height};
+  return { width, height };
 };
 
 NodeContainer.prototype.parseBackgroundPosition = function(bounds, image, index, backgroundSize) {

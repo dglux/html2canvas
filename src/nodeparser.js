@@ -77,7 +77,12 @@ NodeParser.prototype.calculateOverflowClips = function() {
       if(isPseudoElement(container)) {
         container.appendToDOM();
       }
+      
       container.borders = this.parseBorders(container);
+
+      if (this.options.drawBounds) {
+        container.drawnBounds = this.parseDrawnBounds(container);
+      }
 
       var hasOverflowClip = container.css('overflow') === "hidden" ||
         container.css('overflow') === "scroll" ||
@@ -328,7 +333,7 @@ NodeParser.prototype.paintNode = function(container) {
 
 NodeParser.prototype.paintElement = function(container) {
   var bounds = container.parseBounds();
-
+  
   var shadows = container.parseBoxShadows();
   if(shadows.length > 0) {
     shadows.forEach(function(shadow) {
@@ -415,6 +420,10 @@ NodeParser.prototype.paintElement = function(container) {
 
   this.renderer.clip(container.clip, function() {
     this.renderer.renderBorders(container.borders.borders);
+
+    if (this.options.drawBounds) {
+      this.renderer.renderBorders(container.drawnBounds.borders);
+    }
   }, this);
 
   function drawSvg() {
@@ -598,12 +607,14 @@ var borderColorTransforms = {
 
 NodeParser.prototype.parseBorders = function(container) {
   var nodeBounds = container.parseBounds();
-  var borders = ["Top", "Right", "Bottom", "Left"].map(function(side, index) {
-    var style = container.css('border' + side + 'Style');
+  var borders = ["Top", "Right", "Bottom", "Left"].map(function(side, index) {    
+    var style = container.css("border" + side + "Style");
     var color = container.color('border' + side + 'Color');
+
     if(style === "inset" && color.isBlack()) {
       color = new Color([255, 255, 255, color.a]); // this is wrong, but
     }
+    
     var colorTransform = borderColorTransforms[style] ? borderColorTransforms[style][index] : null;
     return {
       width: container.cssInt('border' + side + 'Width'),
@@ -611,11 +622,37 @@ NodeParser.prototype.parseBorders = function(container) {
       args: null
     };
   });
+
   var radius = getBorderRadiusData(container, borders);
   var borderPoints = calculateCurvePoints(nodeBounds, radius, borders);
 
   return {
     clip: this.parseBackgroundClip(container, borderPoints, borders, radius, nodeBounds),
+    borders: calculateBorders(borders, nodeBounds, borderPoints, radius)
+  };
+};
+
+NodeParser.prototype.parseDrawnBounds = function(container) {
+  const nodeBounds = container.parseBounds();
+  const color = new Color([
+    Math.floor(Math.random() * 255),
+    Math.floor(Math.random() * 255),
+    Math.floor(Math.random() * 255),
+    1
+  ]);
+
+  const borders = ["Top", "Right", "Bottom", "Left"].map(side => {
+    return {
+      width: 2,
+      color,
+      args: null
+    };
+  });
+
+  const radius = getBorderRadiusData(container, borders);
+  const borderPoints = calculateCurvePoints(nodeBounds, radius, borders);
+
+  return {
     borders: calculateBorders(borders, nodeBounds, borderPoints, radius)
   };
 };
