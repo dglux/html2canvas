@@ -1,3 +1,4 @@
+const { Map } = require("../polyfill");
 const Renderer = require("./Renderer");
 const LinearGradientContainer = require("../gradient/LinearGradientContainer");
 const RadialGradientContainer = require("../gradient/RadialGradientContainer");

@@ -1,4 +1,4 @@
-var Promise = require('./promise');
+var { Promise } = require("./polyfill");
 var Support = require('./support');
 var CanvasRenderer = require('./renderer/CanvasRenderer');
 var ImageLoader = require('./imageloader');
@@ -8,7 +8,6 @@ var BoundingBox = require('./BoundingBox');
 var log = require('./log');
 var utils = require('./utils');
 var createWindowClone = require('./clone');
-var loadUrlDocument = require('./proxy').loadUrlDocument;
 var getBounds = utils.getBounds;
 
 var html2canvasNodeAttribute = "data-html2canvas-node";

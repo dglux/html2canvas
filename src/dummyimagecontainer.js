@@ -1,4 +1,4 @@
-var Promise = require('./promise');
+var { Promise } = require("./polyfill");
 var log = require('./log');
 var smallImage = require('./utils').smallImage;
 

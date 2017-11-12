@@ -1,5 +1,5 @@
 var SVGContainer = require('./SVGContainer');
-var Promise = require('../promise');
+var { Promise } = require("../polyfill");
 var SVGParser = require('./SVGParser.js');
 var utils = require('../utils');
 

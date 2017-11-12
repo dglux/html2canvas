@@ -1,4 +1,4 @@
-var Promise = require('./promise');
+var { Promise } = require("./polyfill");
 
 function ImageContainer(src, cors) {
   this.src = src;

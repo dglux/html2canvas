@@ -1,4 +1,4 @@
-var Promise = require('../promise');
+var { Promise } = require("../polyfill");
 var XHR = require('../xhr');
 var decode64 = require('../utils').decode64;
 var SVGParser = require('./SVGParser.js');

@@ -1,8 +1,7 @@
-var Promise = require('./promise');
+var { Promise } = require("./polyfill");
 var log = require('./log');
 var ImageContainer = require('./imagecontainer');
 var DummyImageContainer = require('./dummyimagecontainer');
-var ProxyImageContainer = require('./proxyimagecontainer');
 var FrameContainer = require('./framecontainer');
 var SVGContainer = require('./svg/SVGContainer');
 var SVGNodeContainer = require('./svg/SVGNodeContainer');
@@ -71,8 +70,6 @@ ImageLoader.prototype.loadImage = function(imageData, container) {
       return new ImageContainer(src, false);
     } else if(this.support.cors && !this.options.allowTaint) {
       return new ImageContainer(src, true);
-    } else if(this.options.proxy) {
-      return new ProxyImageContainer(src, this.options.proxy);
     } else {
       return new DummyImageContainer(src);
     }

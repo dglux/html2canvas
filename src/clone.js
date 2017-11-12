@@ -1,5 +1,5 @@
 var log = require('./log');
-var Promise = require('./promise');
+var { Promise } = require("./polyfill");
 var hideContainer = require('./utils').hideContainer;
 
 function restoreOwnerScroll(ownerDocument, x, y) {

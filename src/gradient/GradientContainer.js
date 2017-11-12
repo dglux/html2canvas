@@ -1,4 +1,4 @@
-var Promise = require('../promise');
+var { Promise } = require("../polyfill");
 
 function GradientContainer(imageData, container, bounds) {
   this.src = JSON.stringify([imageData.value, bounds]);

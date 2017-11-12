@@ -1,4 +1,4 @@
-var Promise = require('./promise');
+var { Promise } = require("./polyfill");
 
 function XHR(url) {
   return new Promise(function(resolve, reject) {

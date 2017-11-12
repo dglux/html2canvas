@@ -1,7 +1,6 @@
 var utils = require('./utils');
-var Promise = require('./promise');
+var { Promise } = require("./polyfill");
 var getBounds = utils.getBounds;
-var loadUrlDocument = require('./proxy').loadUrlDocument;
 
 function FrameContainer(container, options) {
   this.image = null;
@@ -36,10 +35,5 @@ function FrameContainer(container, options) {
       return self.image = canvas;
     });
 }
-
-FrameContainer.prototype.proxyLoad = function(proxy, bounds, options) {
-  var container = this.src;
-  return loadUrlDocument(container.src, proxy, container.ownerDocument, bounds.width, bounds.height, options);
-};
 
 module.exports = FrameContainer;
