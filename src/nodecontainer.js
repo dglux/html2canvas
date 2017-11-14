@@ -5,6 +5,8 @@ var getBounds = utils.getBounds;
 var parseBackgrounds = utils.parseBackgrounds;
 var offsetBounds = utils.offsetBounds;
 
+const { parseTransform, parseTransformMatrix } = require("./parsing/transform");
+
 function NodeContainer(node, parent) {
   this.node = node;
   this.parent = parent;
@@ -20,7 +22,6 @@ function NodeContainer(node, parent) {
   this.styles = {};
   this.backgroundImages = null;
   this.transformData = null;
-  this.transformMatrix = null;
   this.isPseudoElement = false;
   this.opacity = null;
 }
@@ -145,14 +146,14 @@ NodeContainer.prototype.parseBackgroundSize = function(bounds, image, index) {
     var targetRatio = bounds.width / bounds.height;
     var currentRatio = image.width / image.height;
 
-    return (targetRatio < currentRatio) ^ (size[0] === "contain") ?
-      {
-        width: bounds.height * currentRatio,
-        height: bounds.height
-      } :
+    return (targetRatio < currentRatio) !== (size[0] === "cover") ?
       {
         width: bounds.width,
         height: bounds.width / currentRatio
+      } :
+      {
+        width: bounds.height * currentRatio,
+        height: bounds.height
       };
   }
   
@@ -271,40 +272,23 @@ NodeContainer.prototype.parseTextShadows = function() {
 
 NodeContainer.prototype.parseTransform = function() {
   if(!this.transformData) {
-    if(this.hasTransform()) {
-      var offset = this.parseBounds();
-      var origin = this.prefixedCss("transformOrigin").split(" ").map(removePx).map(asFloat);
-      origin[0] += offset.x;
-      origin[1] += offset.y;
-      this.transformData = {
-        origin: origin,
-        matrix: this.parseTransformMatrix()
-      };
-    } else {
-      this.transformData = {
-        origin: [0, 0],
-        matrix: [1, 0, 0, 1, 0, 0]
-      };
-    }
+    this.transformData = parseTransform(this);
+    this.transformData.makeOriginAbsolute(this);
   }
+
   return this.transformData;
 };
 
-NodeContainer.prototype.parseTransformMatrix = function() {
-  if(!this.transformMatrix) {
-    var transform = this.prefixedCss("transform");
-    var matrix = transform ? parseMatrix(transform.match(this.MATRIX_PROPERTY)) : null;
-    this.transformMatrix = matrix ? matrix : [1, 0, 0, 1, 0, 0];
+NodeContainer.prototype.hasTransform = function() {
+  if (!this.transformData) {
+    this.parseTransform();
   }
-  return this.transformMatrix;
+
+  return !this.transformData.isIdentity() || (this.parent && this.parent.hasTransform());
 };
 
 NodeContainer.prototype.parseBounds = function() {
   return this.bounds || (this.bounds = this.hasTransform() ? offsetBounds(this.node) : getBounds(this.node));
-};
-
-NodeContainer.prototype.hasTransform = function() {
-  return this.parseTransformMatrix().join(",") !== "1,0,0,1,0,0" || (this.parent && this.parent.hasTransform());
 };
 
 NodeContainer.prototype.getValue = function() {
@@ -317,8 +301,6 @@ NodeContainer.prototype.getValue = function() {
   return value.length === 0 ? (this.node.placeholder || "") : value;
 };
 
-NodeContainer.prototype.MATRIX_PROPERTY = /(matrix)\((.+)\)/;
-NodeContainer.prototype.MATRIX_PROPERTY = /(matrix|matrix3d)\((.+)\)/;
 NodeContainer.prototype.CLIP = /^rect\((\d+)px,? (\d+)px,? (\d+)px,? (\d+)px\)$/;
 
 function selectionValue(node) {
@@ -326,29 +308,8 @@ function selectionValue(node) {
   return option ? (option.text || "") : "";
 }
 
-function parseMatrix(match) {
-  if(match && match[1] === "matrix") {
-    return match[2].split(",").map(function(s) {
-      return parseFloat(s.trim());
-    });
-  } else if(match && match[1] === "matrix3d") {
-    var matrix3d = match[2].split(",").map(function(s) {
-      return parseFloat(s.trim());
-    });
-    return [matrix3d[0], matrix3d[1], matrix3d[4], matrix3d[5], matrix3d[12], matrix3d[13]];
-  }
-}
-
 function isPercentage(value) {
   return value.toString().indexOf("%") !== -1;
-}
-
-function removePx(str) {
-  return str.replace("px", "");
-}
-
-function asFloat(str) {
-  return parseFloat(str);
 }
 
 module.exports = NodeContainer;

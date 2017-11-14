@@ -3542,7 +3542,7 @@ module.exports = function(ownerDocument, containerDocument, width, height, optio
   });
 };
 
-},{"./log":81,"./polyfill":84,"./utils":94}],69:[function(_dh2cr_,module,exports){
+},{"./log":81,"./polyfill":85,"./utils":95}],69:[function(_dh2cr_,module,exports){
 // http://dev.w3.org/csswg/css-color/
 
 function Color(value) {
@@ -3840,7 +3840,7 @@ function DummyImageContainer(src) {
 
 module.exports = DummyImageContainer;
 
-},{"./log":81,"./polyfill":84,"./utils":94}],71:[function(_dh2cr_,module,exports){
+},{"./log":81,"./polyfill":85,"./utils":95}],71:[function(_dh2cr_,module,exports){
 var smallImage = _dh2cr_('./utils').smallImage;
 
 function Font(family, size) {
@@ -3894,7 +3894,7 @@ function Font(family, size) {
 
 module.exports = Font;
 
-},{"./utils":94}],72:[function(_dh2cr_,module,exports){
+},{"./utils":95}],72:[function(_dh2cr_,module,exports){
 var Font = _dh2cr_('./font');
 
 function FontMetrics() {
@@ -3952,7 +3952,7 @@ function FrameContainer(container, options) {
 
 module.exports = FrameContainer;
 
-},{"./":80,"./polyfill":84,"./utils":94}],74:[function(_dh2cr_,module,exports){
+},{"./":80,"./polyfill":85,"./utils":95}],74:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
 
@@ -3974,7 +3974,7 @@ GradientContainer.prototype.TYPES = {
 
 module.exports = GradientContainer;
 
-},{"../polyfill":84}],75:[function(_dh2cr_,module,exports){
+},{"../polyfill":85}],75:[function(_dh2cr_,module,exports){
 var GradientContainer = _dh2cr_('./GradientContainer');
 var Color = _dh2cr_('../color');
 
@@ -4286,7 +4286,7 @@ function ImageContainer(src, cors) {
 
 module.exports = ImageContainer;
 
-},{"./polyfill":84}],79:[function(_dh2cr_,module,exports){
+},{"./polyfill":85}],79:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 var log = _dh2cr_('./log');
@@ -4468,7 +4468,7 @@ ImageLoader.prototype.timeout = function(container, timeout) {
 
 module.exports = ImageLoader;
 
-},{"./dummyimagecontainer":70,"./framecontainer":73,"./gradient/LinearGradientContainer":75,"./gradient/RadialGradientContainer":76,"./gradient/WebKitGradientContainer":77,"./imagecontainer":78,"./log":81,"./polyfill":84,"./svg/SVGContainer":90,"./svg/SVGNodeContainer":91,"./utils":94}],80:[function(_dh2cr_,module,exports){
+},{"./dummyimagecontainer":70,"./framecontainer":73,"./gradient/LinearGradientContainer":75,"./gradient/RadialGradientContainer":76,"./gradient/WebKitGradientContainer":77,"./imagecontainer":78,"./log":81,"./polyfill":85,"./svg/SVGContainer":91,"./svg/SVGNodeContainer":92,"./utils":95}],80:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 var Support = _dh2cr_('./support');
@@ -4764,7 +4764,7 @@ module.exports = (typeof(document) === "undefined" || typeof(Object.create) !== 
   return Promise.reject("No canvas support");
 } : html2canvas;
 
-},{"./BoundingBox":67,"./clone":68,"./imageloader":79,"./log":81,"./nodecontainer":82,"./nodeparser":83,"./polyfill":84,"./renderer/CanvasRenderer":86,"./support":89,"./utils":94}],81:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./clone":68,"./imageloader":79,"./log":81,"./nodecontainer":82,"./nodeparser":83,"./polyfill":85,"./renderer/CanvasRenderer":87,"./support":90,"./utils":95}],81:[function(_dh2cr_,module,exports){
 var getFormat = function (args) { return [
     (((Date.now() - window.html2canvas.start)) + "ms"),
     'html2canvas:'
@@ -4788,6 +4788,10 @@ var getBounds = utils.getBounds;
 var parseBackgrounds = utils.parseBackgrounds;
 var offsetBounds = utils.offsetBounds;
 
+var ref = _dh2cr_("./parsing/transform");
+var parseTransform = ref.parseTransform;
+var parseTransformMatrix = ref.parseTransformMatrix;
+
 function NodeContainer(node, parent) {
   this.node = node;
   this.parent = parent;
@@ -4803,7 +4807,6 @@ function NodeContainer(node, parent) {
   this.styles = {};
   this.backgroundImages = null;
   this.transformData = null;
-  this.transformMatrix = null;
   this.isPseudoElement = false;
   this.opacity = null;
 }
@@ -4928,14 +4931,14 @@ NodeContainer.prototype.parseBackgroundSize = function(bounds, image, index) {
     var targetRatio = bounds.width / bounds.height;
     var currentRatio = image.width / image.height;
 
-    return (targetRatio < currentRatio) ^ (size[0] === "contain") ?
-      {
-        width: bounds.height * currentRatio,
-        height: bounds.height
-      } :
+    return (targetRatio < currentRatio) !== (size[0] === "cover") ?
       {
         width: bounds.width,
         height: bounds.width / currentRatio
+      } :
+      {
+        width: bounds.height * currentRatio,
+        height: bounds.height
       };
   }
   
@@ -5058,40 +5061,23 @@ NodeContainer.prototype.parseTextShadows = function() {
 
 NodeContainer.prototype.parseTransform = function() {
   if(!this.transformData) {
-    if(this.hasTransform()) {
-      var offset = this.parseBounds();
-      var origin = this.prefixedCss("transformOrigin").split(" ").map(removePx).map(asFloat);
-      origin[0] += offset.x;
-      origin[1] += offset.y;
-      this.transformData = {
-        origin: origin,
-        matrix: this.parseTransformMatrix()
-      };
-    } else {
-      this.transformData = {
-        origin: [0, 0],
-        matrix: [1, 0, 0, 1, 0, 0]
-      };
-    }
+    this.transformData = parseTransform(this);
+    this.transformData.makeOriginAbsolute(this);
   }
+
   return this.transformData;
 };
 
-NodeContainer.prototype.parseTransformMatrix = function() {
-  if(!this.transformMatrix) {
-    var transform = this.prefixedCss("transform");
-    var matrix = transform ? parseMatrix(transform.match(this.MATRIX_PROPERTY)) : null;
-    this.transformMatrix = matrix ? matrix : [1, 0, 0, 1, 0, 0];
+NodeContainer.prototype.hasTransform = function() {
+  if (!this.transformData) {
+    this.parseTransform();
   }
-  return this.transformMatrix;
+
+  return !this.transformData.isIdentity() || (this.parent && this.parent.hasTransform());
 };
 
 NodeContainer.prototype.parseBounds = function() {
   return this.bounds || (this.bounds = this.hasTransform() ? offsetBounds(this.node) : getBounds(this.node));
-};
-
-NodeContainer.prototype.hasTransform = function() {
-  return this.parseTransformMatrix().join(",") !== "1,0,0,1,0,0" || (this.parent && this.parent.hasTransform());
 };
 
 NodeContainer.prototype.getValue = function() {
@@ -5104,8 +5090,6 @@ NodeContainer.prototype.getValue = function() {
   return value.length === 0 ? (this.node.placeholder || "") : value;
 };
 
-NodeContainer.prototype.MATRIX_PROPERTY = /(matrix)\((.+)\)/;
-NodeContainer.prototype.MATRIX_PROPERTY = /(matrix|matrix3d)\((.+)\)/;
 NodeContainer.prototype.CLIP = /^rect\((\d+)px,? (\d+)px,? (\d+)px,? (\d+)px\)$/;
 
 function selectionValue(node) {
@@ -5113,34 +5097,13 @@ function selectionValue(node) {
   return option ? (option.text || "") : "";
 }
 
-function parseMatrix(match) {
-  if(match && match[1] === "matrix") {
-    return match[2].split(",").map(function(s) {
-      return parseFloat(s.trim());
-    });
-  } else if(match && match[1] === "matrix3d") {
-    var matrix3d = match[2].split(",").map(function(s) {
-      return parseFloat(s.trim());
-    });
-    return [matrix3d[0], matrix3d[1], matrix3d[4], matrix3d[5], matrix3d[12], matrix3d[13]];
-  }
-}
-
 function isPercentage(value) {
   return value.toString().indexOf("%") !== -1;
 }
 
-function removePx(str) {
-  return str.replace("px", "");
-}
-
-function asFloat(str) {
-  return parseFloat(str);
-}
-
 module.exports = NodeContainer;
 
-},{"./BoundingBox":67,"./color":69,"./utils":94}],83:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./color":69,"./parsing/transform":84,"./utils":95}],83:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('./log');
 var punycode = _dh2cr_('punycode');
 var BoundingBox = _dh2cr_('./BoundingBox');
@@ -5234,7 +5197,9 @@ NodeParser.prototype.calculateOverflowClips = function() {
           (container.node.scrollWidth >= container.node.clientWidth ||
           container.node.scrollHeight >= container.node.clientHeight));
 
-      var clip = hasOverflowClip ? [["transform", container.parseTransform()], container.borders.clip] : [["transform", container.parseTransform()]];
+      var transform = container.parseTransform();
+
+      var clip = hasOverflowClip ? [["transform", transform], container.borders.clip] : [["transform", transform]];
       var cssClip = container.parseClip();
       if(cssClip && ["absolute", "fixed"].indexOf(container.css('position')) !== -1) {
         clip.push([["rect",
@@ -5476,6 +5441,8 @@ NodeParser.prototype.paintNode = function(container) {
 };
 
 NodeParser.prototype.paintElement = function(container) {
+  var this$1 = this;
+
   var bounds = container.parseBounds();
   
   var shadows = container.parseBoxShadows();
@@ -5516,9 +5483,9 @@ NodeParser.prototype.paintElement = function(container) {
     }, this);
   }
 
-  this.renderer.clip(container.backgroundClip, function() {
-    this.renderer.renderBackground(container, bounds, container.borders.borders.map(getWidth));
-  }, this);
+  this.renderer.clip(container.backgroundClip, function () {
+    this$1.renderer.renderBackground(container, bounds, container.borders.borders.map(getWidth));
+  });
 
   this.renderer.clip(container.backgroundClip, function() {
     if(shadows.length > 0) {
@@ -6171,7 +6138,126 @@ function hasUnicode(string) {
 
 module.exports = NodeParser;
 
-},{"./BoundingBox":67,"./color":69,"./fontmetrics":72,"./log":81,"./nodecontainer":82,"./polyfill":84,"./pseudoelementcontainer":85,"./stackingcontext":88,"./textcontainer":93,"./utils":94,"punycode":66}],84:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./color":69,"./fontmetrics":72,"./log":81,"./nodecontainer":82,"./polyfill":85,"./pseudoelementcontainer":86,"./stackingcontext":89,"./textcontainer":94,"./utils":95,"punycode":66}],84:[function(_dh2cr_,module,exports){
+var CSSTransform = function CSSTransform(origin, matrix) {
+  this.origin = origin;
+  this.matrix = matrix;
+};
+
+CSSTransform.prototype.makeOriginAbsolute = function makeOriginAbsolute (container) {
+    var offset = container.parseBounds();
+
+    this.offsetX = offset.x;
+    this.offsetY = offset.y;
+
+    this.origin[0] += offset.x;
+    this.origin[1] += offset.y;
+
+    return this;
+};
+
+// multiply two affine transforms
+// https://chromium.googlesource.com/chromium/blink/+/master/Source/platform/transforms/AffineTransform.cpp#131
+CSSTransform.prototype.mult = function mult (other) {
+  if (other.isIdentity()) {
+    return;
+  }
+
+  // origin
+  if (this.offsetX !== undefined || this.offsetY !== undefined) {
+    this.origin = [
+      (other.origin[0] - this.offsetX) * this.matrix[0] + this.offsetX,
+      (other.origin[1] - this.offsetY) * this.matrix[3] + this.offsetY
+    ];
+  } else {
+    this.origin = [].concat( other.origin );
+  }
+
+  // horizontal scaling
+  this.matrix[0] = this.matrix[0] * other.matrix[0] + this.matrix[2] * other.matrix[1];
+  // horizontal skewing
+  this.matrix[1] = this.matrix[1] * other.matrix[0] + this.matrix[3] * other.matrix[2];
+  // vertical skewing
+  this.matrix[2] = this.matrix[0] * other.matrix[2] + this.matrix[2] * other.matrix[3];
+  // vertical scaling
+  this.matrix[3] = this.matrix[1] * other.matrix[2] + this.matrix[3] * other.matrix[3];
+
+  // horizontal offset
+  this.matrix[4] += this.matrix[0] * other.matrix[4] + this.matrix[2] * other.matrix[5];
+  // vertical offset
+  this.matrix[5] += this.matrix[3] * other.matrix[5] + this.matrix[1] * other.matrix[4];
+
+  return this;
+};
+
+CSSTransform.prototype.isIdentity = function isIdentity$1 () {
+  return isIdentity(this.matrix);
+};
+
+var isIdentity = function (matrix) { return matrix.join(",") === "1,0,0,1,0,0"; }; 
+
+var identityMatrix = function () { return [1, 0, 0, 1, 0, 0]; };
+
+var identityTransform = function () { return new CSSTransform([0, 0], identityMatrix()); };
+
+// parse transform functions
+
+var MATRIX_PROPERTY = /(matrix|matrix3d)\((.+)\)/;
+
+function parseTransform(container) {
+  var matrix = parseTransformMatrix(container);
+
+  if (!isIdentity(matrix) ||
+      (container.parent && container.parent.hasTransform())) {
+    var origin = parseTransformOrigin(container);
+
+    return new CSSTransform(origin, matrix);
+  } else {
+    return identityTransform();
+  }
+}
+
+function parseTransformOrigin(container) {
+  return container.prefixedCss("transformOrigin")
+    .split(" ")
+    .map(function (str) { return str.replace("px", ""); })
+    .map(function (str) { return parseFloat(str); });
+}
+
+function parseTransformMatrix(container) {
+  var transform = container.prefixedCss("transform");
+  var matrix = !!transform
+      ? parseMatrix(transform.match(MATRIX_PROPERTY))
+      : null;
+
+  return matrix || identityMatrix();
+}
+
+function parseMatrix(match) {
+  if (match && match[1] === "matrix") {
+    return match[2].split(",").map(function (s) { return parseFloat(s.trim()); });
+  } else if (match && match[1] === "matrix3d") {
+    var matrix3d = match[2].split(",").map(function (s) { return parseFloat(s.trim()); });
+
+    return [
+      matrix3d[0],
+      matrix3d[1],
+      matrix3d[4],
+      matrix3d[5],
+      matrix3d[12],
+      matrix3d[13]
+    ];
+  }
+}
+
+module.exports = {
+  CSSTransform: CSSTransform,
+  identityTransform: identityTransform,
+  parseTransform: parseTransform,
+  parseTransformMatrix: parseTransformMatrix
+};
+
+},{}],85:[function(_dh2cr_,module,exports){
 (function (global){
 module.exports = {
   Promise: global.Promise || _dh2cr_("es6-promise").Promise,
@@ -6179,7 +6265,7 @@ module.exports = {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"es6-map":52,"es6-promise":58}],85:[function(_dh2cr_,module,exports){
+},{"es6-map":52,"es6-promise":58}],86:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 function PseudoElementContainer(node, parent, type) {
@@ -6219,7 +6305,7 @@ PseudoElementContainer.prototype.PSEUDO_HIDE_ELEMENT_CLASS_AFTER = "___html2canv
 
 module.exports = PseudoElementContainer;
 
-},{"./nodecontainer":82}],86:[function(_dh2cr_,module,exports){
+},{"./nodecontainer":82}],87:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Map = ref.Map;
 var Renderer = _dh2cr_("./Renderer");
@@ -6227,20 +6313,8 @@ var LinearGradientContainer = _dh2cr_("../gradient/LinearGradientContainer");
 var RadialGradientContainer = _dh2cr_("../gradient/RadialGradientContainer");
 var log = _dh2cr_("../log");
 
-function hasEntries(array) {
-  return !!array.length;
-}
-
-function identityMatrix() {
-  return {
-    origin: [0, 0],
-    matrix: [1, 0, 0, 1, 0, 0]
-  };
-}
-
-function isIdentityMatrix(transform) {
-  return transform.matrix.join(",") === "1,0,0,1,0,0";
-}
+var ref$1 = _dh2cr_("../parsing/transform");
+var identityTransform = ref$1.identityTransform;
 
 var CanvasRenderer = (function (Renderer) {
   function CanvasRenderer(width, height, imageLoader, options) {
@@ -6279,13 +6353,11 @@ var CanvasRenderer = (function (Renderer) {
     this.stackDepth++;
   };
 
-  CanvasRenderer.prototype.restore = function restore (popStack) {
+  CanvasRenderer.prototype.restore = function restore () {
     this.ctx.restore();
 
-    if (!!popStack) {
-      this.transforms.delete(this.stackDepth);
-      this.stackDepth--;
-    }
+    this.transforms.delete(this.stackDepth);
+    this.stackDepth--;
   };
 
   CanvasRenderer.prototype.setFillStyle = function setFillStyle (fillStyle) {
@@ -6351,22 +6423,30 @@ var CanvasRenderer = (function (Renderer) {
   };
 
   CanvasRenderer.prototype.clip = function clip (shapes, callback, context) {
+    var this$1 = this;
+
     if (!shapes.length) { return; }
 
     this.save();
+
     this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
 
-    shapes.filter(hasEntries).forEach(function(shape) {
+    shapes.filter(function (arr) { return !!arr.length; }).forEach(function (shape) {
       if (shape[0] == "transform") {
-        this.setTransform(shape[1]);
+        this$1.setTransform(shape[1]);
         return;
       }
 
-      this.shape(shape).clip();
-    }, this);
+      /*
+      this.ctx.strokeStyle = "rgb(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + ")";
+      this.shape(shape).stroke();
+      */
+
+      this$1.shape(shape).clip();
+    });
 
     callback.call(context);
-    this.restore(true);
+    this.restore();
   };
 
   CanvasRenderer.prototype.shape = function shape (shape$1) {
@@ -6414,22 +6494,26 @@ var CanvasRenderer = (function (Renderer) {
   CanvasRenderer.prototype.getTransform = function getTransform () {
     var this$1 = this;
 
-    var a = this.stackDepth;
-    while (--a > 0) {
+    var transform = identityTransform();
+
+    var a = 0;
+    while (a++ <= this.stackDepth) {
       if (this$1.transforms.has(a)) {
-        var transform = this$1.transforms.get(a);
-        if (typeof transform.x1 !== "undefined") { continue; }
-        if (isIdentityMatrix(transform)) { continue; }
-        return transform;
+        var t = this$1.transforms.get(a);
+        if (typeof t.x1 !== "undefined") { continue; }
+        if (t.isIdentity()) { continue; }
+        
+        transform.mult(t);
       }
     }
 
-    return identityMatrix();
+    return transform;
   };
 
   CanvasRenderer.prototype.setTransform = function setTransform (transform) {
+    this.transforms.set(this.stackDepth, transform);
+
     this.ctx.translate(transform.origin[0], transform.origin[1]);
-    this.transforms[this.stackDepth.toString()] = transform;
     this.ctx.transform.apply(this.ctx, transform.matrix);
     this.ctx.translate(-transform.origin[0], -transform.origin[1]);
   };
@@ -6452,6 +6536,8 @@ var CanvasRenderer = (function (Renderer) {
   CanvasRenderer.prototype.backgroundRepeatShape = function backgroundRepeatShape (container, imageContainer, backgroundPosition, size,
       bounds, left, top, width, height,
       borderData, func) {
+    var this$1 = this;
+
     var shape = [
       ["line", Math.round(left), Math.round(top)],
       ["line", Math.round(left + width), Math.round(top)],
@@ -6459,37 +6545,51 @@ var CanvasRenderer = (function (Renderer) {
       ["line", Math.round(left), Math.round(height + top)]
     ];
 
+    var transform;
     var arr = [];
     if (container.hasTransform()) {
-      arr.push(["transform", this.getTransform()]);
+      transform = this.getTransform();
+      arr.push(["transform", transform]);
     }
 
     arr.push(shape);
 
-    this.clip(
-      arr,
-      function() {
-        this.renderBackgroundRepeat(
-          imageContainer,
-          backgroundPosition,
-          size,
-          bounds,
-          borderData[3],
-          borderData[0],
-          func
-        );
-      },
-      this
-    );
+    this.clip(arr, function () {
+      this$1.renderBackgroundRepeat(
+        imageContainer,
+        backgroundPosition,
+        size,
+        bounds,
+        borderData[3],
+        borderData[0],
+        func,
+        transform
+      );
+    });
   };
 
   CanvasRenderer.prototype.renderBackgroundRepeat = function renderBackgroundRepeat (imageContainer, backgroundPosition, size,
-      bounds, borderLeft, borderTop, func) {
-    var offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft),
-      offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
+      bounds, borderLeft, borderTop, func, transform) {
+    if (imageContainer.image.constructor.name === "Event") {
+      log("Accidently tried to render a non-image (event).");
+      return;
+    }
 
-    this.ctx.translate(offsetX, offsetY);
+    var offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft);
+    var offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
+
+    var scalarX = 1;
+    var scalarY = 1;
+
+    /*
+    if (!!transform) {
+      scalarX = transform.matrix[0];
+      scalarY = transform.matrix[3];
+    }
+*/
+    this.ctx.translate(offsetX / scalarX, offsetY / scalarY);
     this.ctx.scale(1 / this.scale, 1 / this.scale);
+
     this.setFillStyle(
       this.ctx.createPattern(
         this.resizeImage(imageContainer, size),
@@ -6497,6 +6597,7 @@ var CanvasRenderer = (function (Renderer) {
       )
     );
     this.ctx.fill();
+
     this.ctx.scale(this.scale, this.scale);
     this.ctx.translate(-offsetX, -offsetY);
   };
@@ -6565,7 +6666,7 @@ var CanvasRenderer = (function (Renderer) {
 
 module.exports = CanvasRenderer;
 
-},{"../gradient/LinearGradientContainer":75,"../gradient/RadialGradientContainer":76,"../log":81,"../polyfill":84,"./Renderer":87}],87:[function(_dh2cr_,module,exports){
+},{"../gradient/LinearGradientContainer":75,"../gradient/RadialGradientContainer":76,"../log":81,"../parsing/transform":84,"../polyfill":85,"./Renderer":88}],88:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('../log');
 
 function Renderer(width, height, images, options) {
@@ -6680,7 +6781,7 @@ Renderer.prototype.renderBackgroundRepeating = function(container, bounds, image
 
 module.exports = Renderer;
 
-},{"../log":81}],88:[function(_dh2cr_,module,exports){
+},{"../log":81}],89:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 function StackingContext(hasOwnStacking, opacity, element, parent) {
@@ -6700,7 +6801,7 @@ StackingContext.prototype.getParentStack = function(context) {
 
 module.exports = StackingContext;
 
-},{"./nodecontainer":82}],89:[function(_dh2cr_,module,exports){
+},{"./nodecontainer":82}],90:[function(_dh2cr_,module,exports){
 function Support(document) {
   this.rangeBounds = this.testRangeBounds(document);
   this.cors = this.testCORS();
@@ -6738,7 +6839,7 @@ Support.prototype.testCORS = function() {
 
 module.exports = Support;
 
-},{}],90:[function(_dh2cr_,module,exports){
+},{}],91:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
 var XHR = _dh2cr_('../xhr');
@@ -6809,7 +6910,7 @@ SVGContainer.prototype.decode64 = function(str) {
 
 module.exports = SVGContainer;
 
-},{"../polyfill":84,"../utils":94,"../xhr":95,"./SVGParser.js":92}],91:[function(_dh2cr_,module,exports){
+},{"../polyfill":85,"../utils":95,"../xhr":96,"./SVGParser.js":93}],92:[function(_dh2cr_,module,exports){
 var SVGContainer = _dh2cr_('./SVGContainer');
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
@@ -6865,7 +6966,7 @@ SVGNodeContainer.prototype = Object.create(SVGContainer.prototype);
 
 module.exports = SVGNodeContainer;
 
-},{"../polyfill":84,"../utils":94,"./SVGContainer":90,"./SVGParser.js":92}],92:[function(_dh2cr_,module,exports){
+},{"../polyfill":85,"../utils":95,"./SVGContainer":91,"./SVGParser.js":93}],93:[function(_dh2cr_,module,exports){
 var Color = _dh2cr_('../color');
 var log = _dh2cr_('../log');
 var XHR = _dh2cr_('../xhr');
@@ -10125,7 +10226,7 @@ function build(opts) {
   return svg;
 }
 
-},{"../BoundingBox":67,"../color":69,"../log":81,"../xhr":95}],93:[function(_dh2cr_,module,exports){
+},{"../BoundingBox":67,"../color":69,"../log":81,"../xhr":96}],94:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 function TextContainer(node, parent) {
@@ -10160,7 +10261,7 @@ function capitalize(m, p1, p2) {
 
 module.exports = TextContainer;
 
-},{"./nodecontainer":82}],94:[function(_dh2cr_,module,exports){
+},{"./nodecontainer":82}],95:[function(_dh2cr_,module,exports){
 var BoundingBox = _dh2cr_('./BoundingBox');
 
 exports.smallImage = function smallImage() {
@@ -10348,7 +10449,7 @@ exports.parseBackgrounds = function(backgroundImage) {
   return results;
 };
 
-},{"./BoundingBox":67,"base64-arraybuffer":1}],95:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"base64-arraybuffer":1}],96:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 
@@ -10375,5 +10476,5 @@ function XHR(url) {
 
 module.exports = XHR;
 
-},{"./polyfill":84}]},{},[80])(80)
+},{"./polyfill":85}]},{},[80])(80)
 });

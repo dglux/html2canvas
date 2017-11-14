@@ -11,3 +11,4 @@ node_modules/
 .DS_Store
 examples/client.html
 examples/packages
+examples/AHU

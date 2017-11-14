@@ -90,7 +90,9 @@ NodeParser.prototype.calculateOverflowClips = function() {
           (container.node.scrollWidth >= container.node.clientWidth ||
           container.node.scrollHeight >= container.node.clientHeight));
 
-      var clip = hasOverflowClip ? [["transform", container.parseTransform()], container.borders.clip] : [["transform", container.parseTransform()]];
+      const transform = container.parseTransform();
+
+      var clip = hasOverflowClip ? [["transform", transform], container.borders.clip] : [["transform", transform]];
       var cssClip = container.parseClip();
       if(cssClip && ["absolute", "fixed"].indexOf(container.css('position')) !== -1) {
         clip.push([["rect",
@@ -372,9 +374,9 @@ NodeParser.prototype.paintElement = function(container) {
     }, this);
   }
 
-  this.renderer.clip(container.backgroundClip, function() {
+  this.renderer.clip(container.backgroundClip, () => {
     this.renderer.renderBackground(container, bounds, container.borders.borders.map(getWidth));
-  }, this);
+  });
 
   this.renderer.clip(container.backgroundClip, function() {
     if(shadows.length > 0) {

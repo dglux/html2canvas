@@ -4,20 +4,7 @@ const LinearGradientContainer = require("../gradient/LinearGradientContainer");
 const RadialGradientContainer = require("../gradient/RadialGradientContainer");
 const log = require("../log");
 
-function hasEntries(array) {
-  return !!array.length;
-}
-
-function identityMatrix() {
-  return {
-    origin: [0, 0],
-    matrix: [1, 0, 0, 1, 0, 0]
-  };
-}
-
-function isIdentityMatrix(transform) {
-  return transform.matrix.join(",") === "1,0,0,1,0,0";
-}
+const { identityTransform } = require("../parsing/transform");
 
 class CanvasRenderer extends Renderer {
   /*
@@ -65,13 +52,11 @@ class CanvasRenderer extends Renderer {
     this.stackDepth++;
   }
 
-  restore(popStack) {
+  restore() {
     this.ctx.restore();
 
-    if (!!popStack) {
-      this.transforms.delete(this.stackDepth);
-      this.stackDepth--;
-    }
+    this.transforms.delete(this.stackDepth);
+    this.stackDepth--;
   }
 
   setFillStyle(fillStyle) {
@@ -140,19 +125,25 @@ class CanvasRenderer extends Renderer {
     if (!shapes.length) return;
 
     this.save();
+
     this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
 
-    shapes.filter(hasEntries).forEach(function(shape) {
+    shapes.filter(arr => !!arr.length).forEach(shape => {
       if (shape[0] == "transform") {
         this.setTransform(shape[1]);
         return;
       }
 
+      /*
+      this.ctx.strokeStyle = "rgb(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + ")";
+      this.shape(shape).stroke();
+      */
+
       this.shape(shape).clip();
-    }, this);
+    });
 
     callback.call(context);
-    this.restore(true);
+    this.restore();
   }
 
   shape(shape) {
@@ -198,22 +189,26 @@ class CanvasRenderer extends Renderer {
   }
 
   getTransform() {
-    var a = this.stackDepth;
-    while (--a > 0) {
+    const transform = identityTransform();
+
+    var a = 0;
+    while (a++ <= this.stackDepth) {
       if (this.transforms.has(a)) {
-        var transform = this.transforms.get(a);
-        if (typeof transform.x1 !== "undefined") continue;
-        if (isIdentityMatrix(transform)) continue;
-        return transform;
+        const t = this.transforms.get(a);
+        if (typeof t.x1 !== "undefined") continue;
+        if (t.isIdentity()) continue;
+        
+        transform.mult(t);
       }
     }
 
-    return identityMatrix();
+    return transform;
   }
 
   setTransform(transform) {
+    this.transforms.set(this.stackDepth, transform);
+
     this.ctx.translate(transform.origin[0], transform.origin[1]);
-    this.transforms[this.stackDepth.toString()] = transform;
     this.ctx.transform.apply(this.ctx, transform.matrix);
     this.ctx.translate(-transform.origin[0], -transform.origin[1]);
   }
@@ -243,37 +238,51 @@ class CanvasRenderer extends Renderer {
       ["line", Math.round(left), Math.round(height + top)]
     ];
 
+    let transform;
     const arr = [];
     if (container.hasTransform()) {
-      arr.push(["transform", this.getTransform()]);
+      transform = this.getTransform();
+      arr.push(["transform", transform]);
     }
 
     arr.push(shape);
 
-    this.clip(
-      arr,
-      function() {
-        this.renderBackgroundRepeat(
-          imageContainer,
-          backgroundPosition,
-          size,
-          bounds,
-          borderData[3],
-          borderData[0],
-          func
-        );
-      },
-      this
-    );
+    this.clip(arr, () => {
+      this.renderBackgroundRepeat(
+        imageContainer,
+        backgroundPosition,
+        size,
+        bounds,
+        borderData[3],
+        borderData[0],
+        func,
+        transform
+      );
+    });
   }
 
   renderBackgroundRepeat(imageContainer, backgroundPosition, size,
-      bounds, borderLeft, borderTop, func) {
-    var offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft),
-      offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
+      bounds, borderLeft, borderTop, func, transform) {
+    if (imageContainer.image.constructor.name === "Event") {
+      log("Accidently tried to render a non-image (event).");
+      return;
+    }
 
-    this.ctx.translate(offsetX, offsetY);
+    const offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft);
+    const offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
+
+    let scalarX = 1;
+    let scalarY = 1;
+
+    /*
+    if (!!transform) {
+      scalarX = transform.matrix[0];
+      scalarY = transform.matrix[3];
+    }
+*/
+    this.ctx.translate(offsetX / scalarX, offsetY / scalarY);
     this.ctx.scale(1 / this.scale, 1 / this.scale);
+
     this.setFillStyle(
       this.ctx.createPattern(
         this.resizeImage(imageContainer, size),
@@ -281,6 +290,7 @@ class CanvasRenderer extends Renderer {
       )
     );
     this.ctx.fill();
+
     this.ctx.scale(this.scale, this.scale);
     this.ctx.translate(-offsetX, -offsetY);
   }
