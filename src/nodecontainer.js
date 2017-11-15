@@ -1,9 +1,8 @@
-var Color = require('./color');
-var BoundingBox = require('./BoundingBox');
-var utils = require('./utils');
-var getBounds = utils.getBounds;
-var parseBackgrounds = utils.parseBackgrounds;
-var offsetBounds = utils.offsetBounds;
+const Color = require("./color");
+const BoundingBox = require("./BoundingBox");
+
+const { Clip } = require("./bounds");
+const { getBounds, parseBackgrounds, offsetBounds } = require("./utils");
 
 const { parseTransform, parseTransformMatrix } = require("./parsing/transform");
 
@@ -13,8 +12,8 @@ function NodeContainer(node, parent) {
   this.stack = null;
   this.bounds = null;
   this.borders = null;
-  this.clip = [];
-  this.backgroundClip = [];
+  this.clip = new Clip();
+  this.backgroundClip = new Clip();
   this.offsetBounds = null;
   this.visible = null;
   this.computedStyles = null;
@@ -273,7 +272,7 @@ NodeContainer.prototype.parseTextShadows = function() {
 NodeContainer.prototype.parseTransform = function() {
   if(!this.transformData) {
     this.transformData = parseTransform(this);
-    this.transformData.makeOriginAbsolute(this);
+    this.transformData.add(this.parseBounds());
   }
 
   return this.transformData;

@@ -4,6 +4,8 @@ const LinearGradientContainer = require("../gradient/LinearGradientContainer");
 const RadialGradientContainer = require("../gradient/RadialGradientContainer");
 const log = require("../log");
 
+const { Clip } = require("../bounds");
+
 const { identityTransform } = require("../parsing/transform");
 
 class CanvasRenderer extends Renderer {
@@ -49,14 +51,10 @@ class CanvasRenderer extends Renderer {
 
   save() {
     this.ctx.save();
-    this.stackDepth++;
   }
 
   restore() {
     this.ctx.restore();
-
-    this.transforms.delete(this.stackDepth);
-    this.stackDepth--;
   }
 
   setFillStyle(fillStyle) {
@@ -121,26 +119,37 @@ class CanvasRenderer extends Renderer {
     }
   }
 
-  clip(shapes, callback, context) {
-    if (!shapes.length) return;
-
+  clip(clip, callback, context) {
     this.save();
 
-    this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    const traverse = (clip) => {
+      if (clip.parent) {
+        if (clip.transform) {
+          this.setTransform(clip.transform.inverse());
+        }
 
-    shapes.filter(arr => !!arr.length).forEach(shape => {
-      if (shape[0] == "transform") {
-        this.setTransform(shape[1]);
+        traverse(clip.parent);
+
+        if (clip.transform) {
+          this.setTransform(clip.transform);
+        }
+      }
+
+      if (!clip.shapes.length) {
         return;
       }
 
-      /*
-      this.ctx.strokeStyle = "rgb(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + ")";
-      this.shape(shape).stroke();
-      */
+      clip.shapes.filter(shape => !!shape.length).forEach(shape => {
+        /*
+        this.ctx.strokeStyle = "rgb(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + ")";
+        this.shape(shape).stroke();
+        */
+      
+        this.shape(shape).clip();
+      });
+    };
 
-      this.shape(shape).clip();
-    });
+    traverse(clip);
 
     callback.call(context);
     this.restore();
@@ -188,29 +197,26 @@ class CanvasRenderer extends Renderer {
     this.ctx.globalAlpha = opacity;
   }
 
-  getTransform() {
-    const transform = identityTransform();
-
-    var a = 0;
-    while (a++ <= this.stackDepth) {
-      if (this.transforms.has(a)) {
-        const t = this.transforms.get(a);
-        if (typeof t.x1 !== "undefined") continue;
-        if (t.isIdentity()) continue;
-        
-        transform.mult(t);
-      }
-    }
-
-    return transform;
-  }
-
   setTransform(transform) {
-    this.transforms.set(this.stackDepth, transform);
-
     this.ctx.translate(transform.origin[0], transform.origin[1]);
     this.ctx.transform.apply(this.ctx, transform.matrix);
     this.ctx.translate(-transform.origin[0], -transform.origin[1]);
+  }
+
+  pushTransform(transform) {
+    this.save();
+
+    this.stackDepth++;
+    this.transforms.set(this.stackDepth, transform);
+
+    this.setTransform(transform);
+  }
+
+  popTransform() {
+    this.transforms.delete(this.stackDepth);
+    this.stackDepth--;
+
+    this.restore();
   }
 
   setVariable(property, value) {
@@ -228,26 +234,27 @@ class CanvasRenderer extends Renderer {
     this.ctx.fillText(text, left, bottom);
   }
 
-  backgroundRepeatShape(container, imageContainer, backgroundPosition, size,
-      bounds, left, top, width, height,
-      borderData, func) {
+  backgroundRepeatShape(
+    container,
+    imageContainer,
+    backgroundPosition,
+    size,
+    bounds,
+    left,
+    top,
+    width,
+    height,
+    borderData,
+    func
+  ) {
     const shape = [
       ["line", Math.round(left), Math.round(top)],
       ["line", Math.round(left + width), Math.round(top)],
       ["line", Math.round(left + width), Math.round(height + top)],
       ["line", Math.round(left), Math.round(height + top)]
     ];
-
-    let transform;
-    const arr = [];
-    if (container.hasTransform()) {
-      transform = this.getTransform();
-      arr.push(["transform", transform]);
-    }
-
-    arr.push(shape);
-
-    this.clip(arr, () => {
+    
+    this.clip(new Clip([shape]), () => {
       this.renderBackgroundRepeat(
         imageContainer,
         backgroundPosition,
@@ -255,14 +262,20 @@ class CanvasRenderer extends Renderer {
         bounds,
         borderData[3],
         borderData[0],
-        func,
-        transform
+        func
       );
     });
   }
 
-  renderBackgroundRepeat(imageContainer, backgroundPosition, size,
-      bounds, borderLeft, borderTop, func, transform) {
+  renderBackgroundRepeat(
+    imageContainer,
+    backgroundPosition,
+    size,
+    bounds,
+    borderLeft,
+    borderTop,
+    func
+  ) {
     if (imageContainer.image.constructor.name === "Event") {
       log("Accidently tried to render a non-image (event).");
       return;
@@ -271,16 +284,7 @@ class CanvasRenderer extends Renderer {
     const offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft);
     const offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
 
-    let scalarX = 1;
-    let scalarY = 1;
-
-    /*
-    if (!!transform) {
-      scalarX = transform.matrix[0];
-      scalarY = transform.matrix[3];
-    }
-*/
-    this.ctx.translate(offsetX / scalarX, offsetY / scalarY);
+    this.ctx.translate(offsetX, offsetY);
     this.ctx.scale(1 / this.scale, 1 / this.scale);
 
     this.setFillStyle(
@@ -297,14 +301,18 @@ class CanvasRenderer extends Renderer {
 
   renderBackgroundGradient(gradientImage, bounds) {
     var gradient;
-    if(gradientImage instanceof LinearGradientContainer) {
+    if (gradientImage instanceof LinearGradientContainer) {
       gradient = this.ctx.createLinearGradient(
         bounds.x + gradientImage.x0,
         bounds.y + gradientImage.y0,
         bounds.x + gradientImage.x1,
-        bounds.y + gradientImage.y1);
-    } else if(gradientImage instanceof RadialGradientContainer) {
-      if(typeof gradientImage.scaleX !== 'undefined' || typeof gradientImage.scaleY !== 'undefined') {
+        bounds.y + gradientImage.y1
+      );
+    } else if (gradientImage instanceof RadialGradientContainer) {
+      if (
+        typeof gradientImage.scaleX !== "undefined" ||
+        typeof gradientImage.scaleY !== "undefined"
+      ) {
         gradientImage.scaleX = gradientImage.scaleX || 1;
         gradientImage.scaleY = gradientImage.scaleY || 1;
 
@@ -313,15 +321,30 @@ class CanvasRenderer extends Renderer {
           (bounds.y + gradientImage.y0) / gradientImage.scaleY,
           gradientImage.r,
           (bounds.x + gradientImage.x0) / gradientImage.scaleX,
-          (bounds.y + gradientImage.y0) / gradientImage.scaleY, 0);
+          (bounds.y + gradientImage.y0) / gradientImage.scaleY,
+          0
+        );
 
         gradientImage.colorStops.forEach(function(colorStop) {
           gradient.addColorStop(colorStop.stop, colorStop.color.toString());
         });
 
         var currentTransform = this.ctx.currentTransform;
-        this.ctx.setTransform(gradientImage.scaleX * this.scale, 0, 0, gradientImage.scaleY * this.scale, 0, 0);
-        this.rectangle(bounds.x / gradientImage.scaleX, bounds.y / gradientImage.scaleY, bounds.width, bounds.height, gradient);
+        this.ctx.setTransform(
+          gradientImage.scaleX * this.scale,
+          0,
+          0,
+          gradientImage.scaleY * this.scale,
+          0,
+          0
+        );
+        this.rectangle(
+          bounds.x / gradientImage.scaleX,
+          bounds.y / gradientImage.scaleY,
+          bounds.width,
+          bounds.height,
+          gradient
+        );
 
         // reset the old transform
         this.ctx.currentTransform = currentTransform;
@@ -333,7 +356,9 @@ class CanvasRenderer extends Renderer {
         bounds.y + gradientImage.y0,
         gradientImage.r,
         bounds.x + gradientImage.x0,
-        bounds.y + gradientImage.y0, 0);
+        bounds.y + gradientImage.y0,
+        0
+      );
     }
 
     gradientImage.colorStops.forEach(function(colorStop) {
@@ -346,11 +371,22 @@ class CanvasRenderer extends Renderer {
   resizeImage(imageContainer, size) {
     var image = imageContainer.image;
 
-    var ctx, canvas = document.createElement('canvas');
+    var ctx,
+      canvas = document.createElement("canvas");
     canvas.width = size.width * this.scale;
     canvas.height = size.height * this.scale;
     ctx = canvas.getContext("2d");
-    ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, size.width * this.scale, size.height * this.scale);
+    ctx.drawImage(
+      image,
+      0,
+      0,
+      image.width,
+      image.height,
+      0,
+      0,
+      size.width * this.scale,
+      size.height * this.scale
+    );
     return canvas;
   }
 }

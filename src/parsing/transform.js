@@ -1,57 +1,61 @@
+
+// https://chromium.googlesource.com/chromium/blink/+/master/Source/platform/transforms/AffineTransform.cpp
 class CSSTransform {
   constructor(origin, matrix) {
     this.origin = origin;
     this.matrix = matrix;
+
+    this._inverse = null;
   }
 
-  makeOriginAbsolute(container) {
-      const offset = container.parseBounds();
-
-      this.offsetX = offset.x;
-      this.offsetY = offset.y;
-
-      this.origin[0] += offset.x;
-      this.origin[1] += offset.y;
-
-      return this;
-  }
-
-  // multiply two affine transforms
-  // https://chromium.googlesource.com/chromium/blink/+/master/Source/platform/transforms/AffineTransform.cpp#131
-  mult(other) {
-    if (other.isIdentity()) {
-      return;
-    }
-
-    // origin
-    if (this.offsetX !== undefined || this.offsetY !== undefined) {
-      this.origin = [
-        (other.origin[0] - this.offsetX) * this.matrix[0] + this.offsetX,
-        (other.origin[1] - this.offsetY) * this.matrix[3] + this.offsetY
-      ];
-    } else {
-      this.origin = [ ...other.origin ];
-    }
-
-    // horizontal scaling
-    this.matrix[0] = this.matrix[0] * other.matrix[0] + this.matrix[2] * other.matrix[1];
-    // horizontal skewing
-    this.matrix[1] = this.matrix[1] * other.matrix[0] + this.matrix[3] * other.matrix[2];
-    // vertical skewing
-    this.matrix[2] = this.matrix[0] * other.matrix[2] + this.matrix[2] * other.matrix[3];
-    // vertical scaling
-    this.matrix[3] = this.matrix[1] * other.matrix[2] + this.matrix[3] * other.matrix[3];
-
-    // horizontal offset
-    this.matrix[4] += this.matrix[0] * other.matrix[4] + this.matrix[2] * other.matrix[5];
-    // vertical offset
-    this.matrix[5] += this.matrix[3] * other.matrix[5] + this.matrix[1] * other.matrix[4];
+  add(other) {
+    // is BoundingBox
+    this.origin[0] += other.x;
+    this.origin[1] += other.y;
 
     return this;
   }
 
+  det() {
+    return this.matrix[0] * this.matrix[3] - this.matrix[1] * this.matrix[2];
+  }
+
+  inverse() {
+    if (this._inverse) {
+      return this._inverse;
+    }
+
+    const det = this.det();
+    const result = new CSSTransform([ ...this.origin ], identityMatrix());
+
+    if (!det) {
+      return (this._inverse = result);
+    }
+
+    if (this.isTranslation()) {
+      result.matrix[4] -= this.matrix[4];
+      result.matrix[5] -= this.matrix[5];
+      return (this._inverse = result);
+    }
+
+    result.matrix = [
+      this.matrix[3] / det,
+      -this.matrix[1] / det,
+      -this.matrix[2] / det,
+      this.matrix[0] / det,
+      (this.matrix[2] * this.matrix[5] - this.matrix[3] * this.matrix[4]) / det,
+      (this.matrix[1] * this.matrix[4] - this.matrix[0] * this.matrix[5]) / det
+    ];
+
+    return (this._inverse = result);
+  }
+
   isIdentity() {
     return isIdentity(this.matrix);
+  }
+
+  isTranslation() {
+    return this.matrix[0] === 1 && !this.matrix[1] && !this.matrix[2] && this.matrix[3] === 1;
   }
 }
 

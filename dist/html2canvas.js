@@ -3434,6 +3434,55 @@ BoundingBox.prototype.clone = function() {
 module.exports = BoundingBox;
 
 },{}],68:[function(_dh2cr_,module,exports){
+var NodeContainer = _dh2cr_('./nodecontainer');
+
+var StackingContext = (function (NodeContainer) {
+  function StackingContext(hasOwnStacking, opacity, element, parent) {
+    NodeContainer.call(this, element, parent);
+
+    this.ownStacking = hasOwnStacking;
+    this.contexts = [];
+    this.children = [];
+    this.opacity = (this.parent ? this.parent.stack.opacity : 1) * opacity;
+  }
+
+  if ( NodeContainer ) StackingContext.__proto__ = NodeContainer;
+  StackingContext.prototype = Object.create( NodeContainer && NodeContainer.prototype );
+  StackingContext.prototype.constructor = StackingContext;
+
+  StackingContext.prototype.getParentStack = function getParentStack (context) {
+    var parentStack = this.parent ? this.parent.stack : null;
+    return parentStack ?
+      (parentStack.ownStacking ? parentStack : parentStack.getParentStack(context)) :
+      context.stack;
+  };
+
+  return StackingContext;
+}(NodeContainer));
+
+module.exports = StackingContext;
+
+},{"./nodecontainer":84}],69:[function(_dh2cr_,module,exports){
+var Clip = function Clip(shapes, transform, parent) {
+  this.shapes = shapes || [];
+  this.transform = transform;
+  this.parent = parent;
+};
+
+Clip.prototype.addShape = function addShape (shape) {
+  this.shapes.push(shape);
+  return this;
+};
+
+Clip.prototype.clone = function clone () {
+  return new Clip([].concat( this.shapes ), this.transform, this.parent);
+};
+
+module.exports = {
+  Clip: Clip
+};
+
+},{}],70:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('./log');
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
@@ -3542,7 +3591,7 @@ module.exports = function(ownerDocument, containerDocument, width, height, optio
   });
 };
 
-},{"./log":81,"./polyfill":85,"./utils":95}],69:[function(_dh2cr_,module,exports){
+},{"./log":83,"./polyfill":87,"./utils":96}],71:[function(_dh2cr_,module,exports){
 // http://dev.w3.org/csswg/css-color/
 
 function Color(value) {
@@ -3814,7 +3863,7 @@ var colors = {
 
 module.exports = Color;
 
-},{}],70:[function(_dh2cr_,module,exports){
+},{}],72:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 var log = _dh2cr_('./log');
@@ -3840,7 +3889,7 @@ function DummyImageContainer(src) {
 
 module.exports = DummyImageContainer;
 
-},{"./log":81,"./polyfill":85,"./utils":95}],71:[function(_dh2cr_,module,exports){
+},{"./log":83,"./polyfill":87,"./utils":96}],73:[function(_dh2cr_,module,exports){
 var smallImage = _dh2cr_('./utils').smallImage;
 
 function Font(family, size) {
@@ -3894,7 +3943,7 @@ function Font(family, size) {
 
 module.exports = Font;
 
-},{"./utils":95}],72:[function(_dh2cr_,module,exports){
+},{"./utils":96}],74:[function(_dh2cr_,module,exports){
 var Font = _dh2cr_('./font');
 
 function FontMetrics() {
@@ -3910,7 +3959,7 @@ FontMetrics.prototype.getMetrics = function(family, size) {
 
 module.exports = FontMetrics;
 
-},{"./font":71}],73:[function(_dh2cr_,module,exports){
+},{"./font":73}],75:[function(_dh2cr_,module,exports){
 var utils = _dh2cr_('./utils');
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
@@ -3952,7 +4001,7 @@ function FrameContainer(container, options) {
 
 module.exports = FrameContainer;
 
-},{"./":80,"./polyfill":85,"./utils":95}],74:[function(_dh2cr_,module,exports){
+},{"./":82,"./polyfill":87,"./utils":96}],76:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
 
@@ -3974,7 +4023,7 @@ GradientContainer.prototype.TYPES = {
 
 module.exports = GradientContainer;
 
-},{"../polyfill":85}],75:[function(_dh2cr_,module,exports){
+},{"../polyfill":87}],77:[function(_dh2cr_,module,exports){
 var GradientContainer = _dh2cr_('./GradientContainer');
 var Color = _dh2cr_('../color');
 
@@ -4125,7 +4174,7 @@ LinearGradientContainer.prototype.stepRegExp = /((?:rgb|rgba)\(\d{1,3},\s\d{1,3}
 
 module.exports = LinearGradientContainer;
 
-},{"../color":69,"./GradientContainer":74}],76:[function(_dh2cr_,module,exports){
+},{"../color":71,"./GradientContainer":76}],78:[function(_dh2cr_,module,exports){
 var GradientContainer = _dh2cr_('./GradientContainer');
 var Color = _dh2cr_('../color');
 
@@ -4250,7 +4299,7 @@ RadialGradientContainer.prototype.stepRegExp = /((?:rgb|rgba)\(\d{1,3},\s\d{1,3}
 
 module.exports = RadialGradientContainer;
 
-},{"../color":69,"./GradientContainer":74}],77:[function(_dh2cr_,module,exports){
+},{"../color":71,"./GradientContainer":76}],79:[function(_dh2cr_,module,exports){
 var GradientContainer = _dh2cr_('./GradientContainer');
 
 function WebkitGradientContainer(imageData, container) {
@@ -4262,7 +4311,7 @@ WebkitGradientContainer.prototype = Object.create(GradientContainer.prototype);
 
 module.exports = WebkitGradientContainer;
 
-},{"./GradientContainer":74}],78:[function(_dh2cr_,module,exports){
+},{"./GradientContainer":76}],80:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 
@@ -4286,7 +4335,7 @@ function ImageContainer(src, cors) {
 
 module.exports = ImageContainer;
 
-},{"./polyfill":85}],79:[function(_dh2cr_,module,exports){
+},{"./polyfill":87}],81:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 var log = _dh2cr_('./log');
@@ -4468,7 +4517,7 @@ ImageLoader.prototype.timeout = function(container, timeout) {
 
 module.exports = ImageLoader;
 
-},{"./dummyimagecontainer":70,"./framecontainer":73,"./gradient/LinearGradientContainer":75,"./gradient/RadialGradientContainer":76,"./gradient/WebKitGradientContainer":77,"./imagecontainer":78,"./log":81,"./polyfill":85,"./svg/SVGContainer":91,"./svg/SVGNodeContainer":92,"./utils":95}],80:[function(_dh2cr_,module,exports){
+},{"./dummyimagecontainer":72,"./framecontainer":75,"./gradient/LinearGradientContainer":77,"./gradient/RadialGradientContainer":78,"./gradient/WebKitGradientContainer":79,"./imagecontainer":80,"./log":83,"./polyfill":87,"./svg/SVGContainer":92,"./svg/SVGNodeContainer":93,"./utils":96}],82:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 var Support = _dh2cr_('./support');
@@ -4764,7 +4813,7 @@ module.exports = (typeof(document) === "undefined" || typeof(Object.create) !== 
   return Promise.reject("No canvas support");
 } : html2canvas;
 
-},{"./BoundingBox":67,"./clone":68,"./imageloader":79,"./log":81,"./nodecontainer":82,"./nodeparser":83,"./polyfill":85,"./renderer/CanvasRenderer":87,"./support":90,"./utils":95}],81:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./clone":70,"./imageloader":81,"./log":83,"./nodecontainer":84,"./nodeparser":85,"./polyfill":87,"./renderer/CanvasRenderer":89,"./support":91,"./utils":96}],83:[function(_dh2cr_,module,exports){
 var getFormat = function (args) { return [
     (((Date.now() - window.html2canvas.start)) + "ms"),
     'html2canvas:'
@@ -4780,17 +4829,20 @@ module.exports = function () {
 
 module.exports.getFormat = getFormat;
 
-},{}],82:[function(_dh2cr_,module,exports){
-var Color = _dh2cr_('./color');
-var BoundingBox = _dh2cr_('./BoundingBox');
-var utils = _dh2cr_('./utils');
-var getBounds = utils.getBounds;
-var parseBackgrounds = utils.parseBackgrounds;
-var offsetBounds = utils.offsetBounds;
+},{}],84:[function(_dh2cr_,module,exports){
+var Color = _dh2cr_("./color");
+var BoundingBox = _dh2cr_("./BoundingBox");
 
-var ref = _dh2cr_("./parsing/transform");
-var parseTransform = ref.parseTransform;
-var parseTransformMatrix = ref.parseTransformMatrix;
+var ref = _dh2cr_("./bounds");
+var Clip = ref.Clip;
+var ref$1 = _dh2cr_("./utils");
+var getBounds = ref$1.getBounds;
+var parseBackgrounds = ref$1.parseBackgrounds;
+var offsetBounds = ref$1.offsetBounds;
+
+var ref$2 = _dh2cr_("./parsing/transform");
+var parseTransform = ref$2.parseTransform;
+var parseTransformMatrix = ref$2.parseTransformMatrix;
 
 function NodeContainer(node, parent) {
   this.node = node;
@@ -4798,8 +4850,8 @@ function NodeContainer(node, parent) {
   this.stack = null;
   this.bounds = null;
   this.borders = null;
-  this.clip = [];
-  this.backgroundClip = [];
+  this.clip = new Clip();
+  this.backgroundClip = new Clip();
   this.offsetBounds = null;
   this.visible = null;
   this.computedStyles = null;
@@ -5062,7 +5114,7 @@ NodeContainer.prototype.parseTextShadows = function() {
 NodeContainer.prototype.parseTransform = function() {
   if(!this.transformData) {
     this.transformData = parseTransform(this);
-    this.transformData.makeOriginAbsolute(this);
+    this.transformData.add(this.parseBounds());
   }
 
   return this.transformData;
@@ -5103,7 +5155,7 @@ function isPercentage(value) {
 
 module.exports = NodeContainer;
 
-},{"./BoundingBox":67,"./color":69,"./parsing/transform":84,"./utils":95}],83:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./bounds":69,"./color":71,"./parsing/transform":86,"./utils":96}],85:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('./log');
 var punycode = _dh2cr_('punycode');
 var BoundingBox = _dh2cr_('./BoundingBox');
@@ -5114,12 +5166,14 @@ var FontMetrics = _dh2cr_('./fontmetrics');
 var Color = _dh2cr_('./color');
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
-var StackingContext = _dh2cr_('./stackingcontext');
+var StackingContext = _dh2cr_('./StackingContext');
 var utils = _dh2cr_('./utils');
 var bind = utils.bind;
 var getBounds = utils.getBounds;
 var parseBackgrounds = utils.parseBackgrounds;
-var offsetBounds = utils.offsetBounds;
+
+var ref$1 = _dh2cr_("./bounds");
+var Clip = ref$1.Clip;
 
 function NodeParser(element, renderer, support, imageLoader, options) {
   log("Starting NodeParser");
@@ -5197,12 +5251,15 @@ NodeParser.prototype.calculateOverflowClips = function() {
           (container.node.scrollWidth >= container.node.clientWidth ||
           container.node.scrollHeight >= container.node.clientHeight));
 
-      var transform = container.parseTransform();
+      var clip = new Clip([], container.hasTransform() ? container.parseTransform() : null);
 
-      var clip = hasOverflowClip ? [["transform", transform], container.borders.clip] : [["transform", transform]];
+      if (hasOverflowClip) {
+        clip.addShape(container.borders.clip);
+      }
+
       var cssClip = container.parseClip();
-      if(cssClip && ["absolute", "fixed"].indexOf(container.css('position')) !== -1) {
-        clip.push([["rect",
+      if(cssClip && ["absolute", "fixed"].indexOf(container.css("position")) !== -1) {
+        clip.addShape([["rect",
           container.bounds.x + cssClip.x,
           container.bounds.y + cssClip.y,
           cssClip.x2 - cssClip.x,
@@ -5210,13 +5267,20 @@ NodeParser.prototype.calculateOverflowClips = function() {
         ]]);
       }
 
-      container.clip = hasParentClip(container) ? container.parent.clip.concat(clip) : clip;
-      container.backgroundClip = !hasOverflowClip ? container.clip.concat([container.borders.clip]) : container.clip;
+      if (hasParentClip(container)) {
+        clip.parent = container.parent.clip;
+      }
+
+      container.clip = clip;
+      container.backgroundClip = !hasOverflowClip ?
+          container.clip.clone().addShape(container.borders.clip) :
+          container.clip;
+      
       if(isPseudoElement(container)) {
         container.cleanDOM();
       }
-    } else if(isTextNode(container)) {
-      container.clip = hasParentClip(container) ? container.parent.clip : [];
+    } else if (isTextNode(container)) {
+      container.clip = hasParentClip(container) ? container.parent.clip : new Clip();
     }
     if(!isPseudoElement(container)) {
       container.bounds = null;
@@ -5225,20 +5289,23 @@ NodeParser.prototype.calculateOverflowClips = function() {
 };
 
 function hasParentClip(container) {
-  return container.parent && container.parent.clip.length;
+  return container.parent && container.parent.clip.shapes.length;
 }
 
 NodeParser.prototype.asyncRenderer = function(queue, resolve, asyncTimer) {
+  var this$1 = this;
+
   asyncTimer = asyncTimer || Date.now();
   this.paint(queue[this.renderIndex++]);
+
   if(queue.length === this.renderIndex) {
     resolve();
   } else if(asyncTimer + 20 > Date.now()) {
     this.asyncRenderer(queue, resolve, asyncTimer);
   } else {
-    setTimeout(bind(function() {
-      this.asyncRenderer(queue, resolve);
-    }, this), 0);
+    window.requestAnimationFrame(function (_) {
+      this$1.asyncRenderer(queue, resolve);
+    });
   }
 };
 
@@ -5377,8 +5444,9 @@ NodeParser.prototype.getRangeBounds = function(node, offset, length) {
   return new BoundingBox(rect.left, rect.top, rect.right, rect.bottom);
 };
 
-function ClearTransform() {
-}
+NodeParser.FLAGS = {
+  CLEAR_TRANSFORM: "CLEAR_TRANSFORM"
+};
 
 NodeParser.prototype.parse = function(stack) {
   // http://www.w3.org/TR/CSS21/visuren.html#z-index
@@ -5396,29 +5464,29 @@ NodeParser.prototype.parse = function(stack) {
       this.renderQueue.push(container);
       if(isStackingContext(container)) {
         this.parse(container);
-        this.renderQueue.push(new ClearTransform());
+        this.renderQueue.push(NodeParser.FLAGS.CLEAR_TRANSFORM);
       }
     }, this);
 };
 
 NodeParser.prototype.paint = function(container) {
   try {
-    if(container instanceof ClearTransform) {
-      this.renderer.restore();
-    } else if(isTextNode(container)) {
-      if(isPseudoElement(container.parent)) {
+    if (container === NodeParser.FLAGS.CLEAR_TRANSFORM) {
+      this.renderer.popTransform();
+    } else if (isTextNode(container)) {
+      if (isPseudoElement(container.parent)) {
         container.parent.appendToDOM();
       }
       this.paintText(container);
-      if(isPseudoElement(container.parent)) {
+      if (isPseudoElement(container.parent)) {
         container.parent.cleanDOM();
       }
     } else {
       this.paintNode(container);
     }
-  } catch(e) {
+  } catch (e) {
     log(e);
-    if(this.options.strict) {
+    if (this.options.strict) {
       throw e;
     }
   }
@@ -5427,13 +5495,12 @@ NodeParser.prototype.paint = function(container) {
 NodeParser.prototype.paintNode = function(container) {
   if(isStackingContext(container)) {
     this.renderer.setOpacity(container.opacity);
-    this.renderer.save();
-    this.renderer.setTransform(container.parseTransform());
+    this.renderer.pushTransform(container.parseTransform());
   }
 
-  if(container.node.nodeName === "INPUT" && container.node.type === "checkbox") {
+  if (container.node.nodeName === "INPUT" && container.node.type === "checkbox") {
     this.paintCheckbox(container);
-  } else if(container.node.nodeName === "INPUT" && container.node.type === "radio") {
+  } else if (container.node.nodeName === "INPUT" && container.node.type === "radio") {
     this.paintRadio(container);
   } else {
     this.paintElement(container);
@@ -5451,7 +5518,7 @@ NodeParser.prototype.paintElement = function(container) {
       if(shadow.inset)
         { return; }
 
-      shadow.blur = shadow.blur * this.renderer.getTransform().matrix[0];
+      shadow.blur = shadow.blur;
 
       var alpha = shadow.color.a;
       shadow.color.a = 255;
@@ -5494,7 +5561,7 @@ NodeParser.prototype.paintElement = function(container) {
         if(!shadow.inset)
           { return; }
 
-        shadow.blur = shadow.blur * this.renderer.getTransform().matrix[0];
+        shadow.blur = shadow.blur;
 
         var alpha = shadow.color.a;
         shadow.color.a = 255;
@@ -6138,60 +6205,64 @@ function hasUnicode(string) {
 
 module.exports = NodeParser;
 
-},{"./BoundingBox":67,"./color":69,"./fontmetrics":72,"./log":81,"./nodecontainer":82,"./polyfill":85,"./pseudoelementcontainer":86,"./stackingcontext":89,"./textcontainer":94,"./utils":95,"punycode":66}],84:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./StackingContext":68,"./bounds":69,"./color":71,"./fontmetrics":74,"./log":83,"./nodecontainer":84,"./polyfill":87,"./pseudoelementcontainer":88,"./textcontainer":95,"./utils":96,"punycode":66}],86:[function(_dh2cr_,module,exports){
+
+// https://chromium.googlesource.com/chromium/blink/+/master/Source/platform/transforms/AffineTransform.cpp
 var CSSTransform = function CSSTransform(origin, matrix) {
   this.origin = origin;
   this.matrix = matrix;
+
+  this._inverse = null;
 };
 
-CSSTransform.prototype.makeOriginAbsolute = function makeOriginAbsolute (container) {
-    var offset = container.parseBounds();
-
-    this.offsetX = offset.x;
-    this.offsetY = offset.y;
-
-    this.origin[0] += offset.x;
-    this.origin[1] += offset.y;
-
-    return this;
-};
-
-// multiply two affine transforms
-// https://chromium.googlesource.com/chromium/blink/+/master/Source/platform/transforms/AffineTransform.cpp#131
-CSSTransform.prototype.mult = function mult (other) {
-  if (other.isIdentity()) {
-    return;
-  }
-
-  // origin
-  if (this.offsetX !== undefined || this.offsetY !== undefined) {
-    this.origin = [
-      (other.origin[0] - this.offsetX) * this.matrix[0] + this.offsetX,
-      (other.origin[1] - this.offsetY) * this.matrix[3] + this.offsetY
-    ];
-  } else {
-    this.origin = [].concat( other.origin );
-  }
-
-  // horizontal scaling
-  this.matrix[0] = this.matrix[0] * other.matrix[0] + this.matrix[2] * other.matrix[1];
-  // horizontal skewing
-  this.matrix[1] = this.matrix[1] * other.matrix[0] + this.matrix[3] * other.matrix[2];
-  // vertical skewing
-  this.matrix[2] = this.matrix[0] * other.matrix[2] + this.matrix[2] * other.matrix[3];
-  // vertical scaling
-  this.matrix[3] = this.matrix[1] * other.matrix[2] + this.matrix[3] * other.matrix[3];
-
-  // horizontal offset
-  this.matrix[4] += this.matrix[0] * other.matrix[4] + this.matrix[2] * other.matrix[5];
-  // vertical offset
-  this.matrix[5] += this.matrix[3] * other.matrix[5] + this.matrix[1] * other.matrix[4];
+CSSTransform.prototype.add = function add (other) {
+  // is BoundingBox
+  this.origin[0] += other.x;
+  this.origin[1] += other.y;
 
   return this;
 };
 
+CSSTransform.prototype.det = function det () {
+  return this.matrix[0] * this.matrix[3] - this.matrix[1] * this.matrix[2];
+};
+
+CSSTransform.prototype.inverse = function inverse () {
+  if (this._inverse) {
+    return this._inverse;
+  }
+
+  var det = this.det();
+  var result = new CSSTransform([].concat( this.origin ), identityMatrix());
+
+  if (!det) {
+    return (this._inverse = result);
+  }
+
+  if (this.isTranslation()) {
+    result.matrix[4] -= this.matrix[4];
+    result.matrix[5] -= this.matrix[5];
+    return (this._inverse = result);
+  }
+
+  result.matrix = [
+    this.matrix[3] / det,
+    -this.matrix[1] / det,
+    -this.matrix[2] / det,
+    this.matrix[0] / det,
+    (this.matrix[2] * this.matrix[5] - this.matrix[3] * this.matrix[4]) / det,
+    (this.matrix[1] * this.matrix[4] - this.matrix[0] * this.matrix[5]) / det
+  ];
+
+  return (this._inverse = result);
+};
+
 CSSTransform.prototype.isIdentity = function isIdentity$1 () {
   return isIdentity(this.matrix);
+};
+
+CSSTransform.prototype.isTranslation = function isTranslation () {
+  return this.matrix[0] === 1 && !this.matrix[1] && !this.matrix[2] && this.matrix[3] === 1;
 };
 
 var isIdentity = function (matrix) { return matrix.join(",") === "1,0,0,1,0,0"; }; 
@@ -6257,7 +6328,7 @@ module.exports = {
   parseTransformMatrix: parseTransformMatrix
 };
 
-},{}],85:[function(_dh2cr_,module,exports){
+},{}],87:[function(_dh2cr_,module,exports){
 (function (global){
 module.exports = {
   Promise: global.Promise || _dh2cr_("es6-promise").Promise,
@@ -6265,7 +6336,7 @@ module.exports = {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"es6-map":52,"es6-promise":58}],86:[function(_dh2cr_,module,exports){
+},{"es6-map":52,"es6-promise":58}],88:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 function PseudoElementContainer(node, parent, type) {
@@ -6305,7 +6376,7 @@ PseudoElementContainer.prototype.PSEUDO_HIDE_ELEMENT_CLASS_AFTER = "___html2canv
 
 module.exports = PseudoElementContainer;
 
-},{"./nodecontainer":82}],87:[function(_dh2cr_,module,exports){
+},{"./nodecontainer":84}],89:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Map = ref.Map;
 var Renderer = _dh2cr_("./Renderer");
@@ -6313,8 +6384,11 @@ var LinearGradientContainer = _dh2cr_("../gradient/LinearGradientContainer");
 var RadialGradientContainer = _dh2cr_("../gradient/RadialGradientContainer");
 var log = _dh2cr_("../log");
 
-var ref$1 = _dh2cr_("../parsing/transform");
-var identityTransform = ref$1.identityTransform;
+var ref$1 = _dh2cr_("../bounds");
+var Clip = ref$1.Clip;
+
+var ref$2 = _dh2cr_("../parsing/transform");
+var identityTransform = ref$2.identityTransform;
 
 var CanvasRenderer = (function (Renderer) {
   function CanvasRenderer(width, height, imageLoader, options) {
@@ -6350,14 +6424,10 @@ var CanvasRenderer = (function (Renderer) {
 
   CanvasRenderer.prototype.save = function save () {
     this.ctx.save();
-    this.stackDepth++;
   };
 
   CanvasRenderer.prototype.restore = function restore () {
     this.ctx.restore();
-
-    this.transforms.delete(this.stackDepth);
-    this.stackDepth--;
   };
 
   CanvasRenderer.prototype.setFillStyle = function setFillStyle (fillStyle) {
@@ -6422,28 +6492,39 @@ var CanvasRenderer = (function (Renderer) {
     }
   };
 
-  CanvasRenderer.prototype.clip = function clip (shapes, callback, context) {
+  CanvasRenderer.prototype.clip = function clip (clip$1, callback, context) {
     var this$1 = this;
-
-    if (!shapes.length) { return; }
 
     this.save();
 
-    this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+    var traverse = function (clip) {
+      if (clip.parent) {
+        if (clip.transform) {
+          this$1.setTransform(clip.transform.inverse());
+        }
 
-    shapes.filter(function (arr) { return !!arr.length; }).forEach(function (shape) {
-      if (shape[0] == "transform") {
-        this$1.setTransform(shape[1]);
+        traverse(clip.parent);
+
+        if (clip.transform) {
+          this$1.setTransform(clip.transform);
+        }
+      }
+
+      if (!clip.shapes.length) {
         return;
       }
 
-      /*
-      this.ctx.strokeStyle = "rgb(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + ")";
-      this.shape(shape).stroke();
-      */
+      clip.shapes.filter(function (shape) { return !!shape.length; }).forEach(function (shape) {
+        /*
+        this.ctx.strokeStyle = "rgb(" + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + "," + Math.floor(Math.random() * 255) + ")";
+        this.shape(shape).stroke();
+        */
+      
+        this$1.shape(shape).clip();
+      });
+    };
 
-      this$1.shape(shape).clip();
-    });
+    traverse(clip$1);
 
     callback.call(context);
     this.restore();
@@ -6491,31 +6572,26 @@ var CanvasRenderer = (function (Renderer) {
     this.ctx.globalAlpha = opacity;
   };
 
-  CanvasRenderer.prototype.getTransform = function getTransform () {
-    var this$1 = this;
-
-    var transform = identityTransform();
-
-    var a = 0;
-    while (a++ <= this.stackDepth) {
-      if (this$1.transforms.has(a)) {
-        var t = this$1.transforms.get(a);
-        if (typeof t.x1 !== "undefined") { continue; }
-        if (t.isIdentity()) { continue; }
-        
-        transform.mult(t);
-      }
-    }
-
-    return transform;
-  };
-
   CanvasRenderer.prototype.setTransform = function setTransform (transform) {
-    this.transforms.set(this.stackDepth, transform);
-
     this.ctx.translate(transform.origin[0], transform.origin[1]);
     this.ctx.transform.apply(this.ctx, transform.matrix);
     this.ctx.translate(-transform.origin[0], -transform.origin[1]);
+  };
+
+  CanvasRenderer.prototype.pushTransform = function pushTransform (transform) {
+    this.save();
+
+    this.stackDepth++;
+    this.transforms.set(this.stackDepth, transform);
+
+    this.setTransform(transform);
+  };
+
+  CanvasRenderer.prototype.popTransform = function popTransform () {
+    this.transforms.delete(this.stackDepth);
+    this.stackDepth--;
+
+    this.restore();
   };
 
   CanvasRenderer.prototype.setVariable = function setVariable (property, value) {
@@ -6533,9 +6609,19 @@ var CanvasRenderer = (function (Renderer) {
     this.ctx.fillText(text$1, left, bottom);
   };
 
-  CanvasRenderer.prototype.backgroundRepeatShape = function backgroundRepeatShape (container, imageContainer, backgroundPosition, size,
-      bounds, left, top, width, height,
-      borderData, func) {
+  CanvasRenderer.prototype.backgroundRepeatShape = function backgroundRepeatShape (
+    container,
+    imageContainer,
+    backgroundPosition,
+    size,
+    bounds,
+    left,
+    top,
+    width,
+    height,
+    borderData,
+    func
+  ) {
     var this$1 = this;
 
     var shape = [
@@ -6544,17 +6630,8 @@ var CanvasRenderer = (function (Renderer) {
       ["line", Math.round(left + width), Math.round(height + top)],
       ["line", Math.round(left), Math.round(height + top)]
     ];
-
-    var transform;
-    var arr = [];
-    if (container.hasTransform()) {
-      transform = this.getTransform();
-      arr.push(["transform", transform]);
-    }
-
-    arr.push(shape);
-
-    this.clip(arr, function () {
+    
+    this.clip(new Clip([shape]), function () {
       this$1.renderBackgroundRepeat(
         imageContainer,
         backgroundPosition,
@@ -6562,14 +6639,20 @@ var CanvasRenderer = (function (Renderer) {
         bounds,
         borderData[3],
         borderData[0],
-        func,
-        transform
+        func
       );
     });
   };
 
-  CanvasRenderer.prototype.renderBackgroundRepeat = function renderBackgroundRepeat (imageContainer, backgroundPosition, size,
-      bounds, borderLeft, borderTop, func, transform) {
+  CanvasRenderer.prototype.renderBackgroundRepeat = function renderBackgroundRepeat (
+    imageContainer,
+    backgroundPosition,
+    size,
+    bounds,
+    borderLeft,
+    borderTop,
+    func
+  ) {
     if (imageContainer.image.constructor.name === "Event") {
       log("Accidently tried to render a non-image (event).");
       return;
@@ -6578,16 +6661,7 @@ var CanvasRenderer = (function (Renderer) {
     var offsetX = Math.round(bounds.x + backgroundPosition.x + borderLeft);
     var offsetY = Math.round(bounds.y + backgroundPosition.y + borderTop);
 
-    var scalarX = 1;
-    var scalarY = 1;
-
-    /*
-    if (!!transform) {
-      scalarX = transform.matrix[0];
-      scalarY = transform.matrix[3];
-    }
-*/
-    this.ctx.translate(offsetX / scalarX, offsetY / scalarY);
+    this.ctx.translate(offsetX, offsetY);
     this.ctx.scale(1 / this.scale, 1 / this.scale);
 
     this.setFillStyle(
@@ -6604,14 +6678,18 @@ var CanvasRenderer = (function (Renderer) {
 
   CanvasRenderer.prototype.renderBackgroundGradient = function renderBackgroundGradient (gradientImage, bounds) {
     var gradient;
-    if(gradientImage instanceof LinearGradientContainer) {
+    if (gradientImage instanceof LinearGradientContainer) {
       gradient = this.ctx.createLinearGradient(
         bounds.x + gradientImage.x0,
         bounds.y + gradientImage.y0,
         bounds.x + gradientImage.x1,
-        bounds.y + gradientImage.y1);
-    } else if(gradientImage instanceof RadialGradientContainer) {
-      if(typeof gradientImage.scaleX !== 'undefined' || typeof gradientImage.scaleY !== 'undefined') {
+        bounds.y + gradientImage.y1
+      );
+    } else if (gradientImage instanceof RadialGradientContainer) {
+      if (
+        typeof gradientImage.scaleX !== "undefined" ||
+        typeof gradientImage.scaleY !== "undefined"
+      ) {
         gradientImage.scaleX = gradientImage.scaleX || 1;
         gradientImage.scaleY = gradientImage.scaleY || 1;
 
@@ -6620,15 +6698,30 @@ var CanvasRenderer = (function (Renderer) {
           (bounds.y + gradientImage.y0) / gradientImage.scaleY,
           gradientImage.r,
           (bounds.x + gradientImage.x0) / gradientImage.scaleX,
-          (bounds.y + gradientImage.y0) / gradientImage.scaleY, 0);
+          (bounds.y + gradientImage.y0) / gradientImage.scaleY,
+          0
+        );
 
         gradientImage.colorStops.forEach(function(colorStop) {
           gradient.addColorStop(colorStop.stop, colorStop.color.toString());
         });
 
         var currentTransform = this.ctx.currentTransform;
-        this.ctx.setTransform(gradientImage.scaleX * this.scale, 0, 0, gradientImage.scaleY * this.scale, 0, 0);
-        this.rectangle(bounds.x / gradientImage.scaleX, bounds.y / gradientImage.scaleY, bounds.width, bounds.height, gradient);
+        this.ctx.setTransform(
+          gradientImage.scaleX * this.scale,
+          0,
+          0,
+          gradientImage.scaleY * this.scale,
+          0,
+          0
+        );
+        this.rectangle(
+          bounds.x / gradientImage.scaleX,
+          bounds.y / gradientImage.scaleY,
+          bounds.width,
+          bounds.height,
+          gradient
+        );
 
         // reset the old transform
         this.ctx.currentTransform = currentTransform;
@@ -6640,7 +6733,9 @@ var CanvasRenderer = (function (Renderer) {
         bounds.y + gradientImage.y0,
         gradientImage.r,
         bounds.x + gradientImage.x0,
-        bounds.y + gradientImage.y0, 0);
+        bounds.y + gradientImage.y0,
+        0
+      );
     }
 
     gradientImage.colorStops.forEach(function(colorStop) {
@@ -6653,11 +6748,22 @@ var CanvasRenderer = (function (Renderer) {
   CanvasRenderer.prototype.resizeImage = function resizeImage (imageContainer, size) {
     var image = imageContainer.image;
 
-    var ctx, canvas = document.createElement('canvas');
+    var ctx,
+      canvas = document.createElement("canvas");
     canvas.width = size.width * this.scale;
     canvas.height = size.height * this.scale;
     ctx = canvas.getContext("2d");
-    ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, size.width * this.scale, size.height * this.scale);
+    ctx.drawImage(
+      image,
+      0,
+      0,
+      image.width,
+      image.height,
+      0,
+      0,
+      size.width * this.scale,
+      size.height * this.scale
+    );
     return canvas;
   };
 
@@ -6666,7 +6772,7 @@ var CanvasRenderer = (function (Renderer) {
 
 module.exports = CanvasRenderer;
 
-},{"../gradient/LinearGradientContainer":75,"../gradient/RadialGradientContainer":76,"../log":81,"../parsing/transform":84,"../polyfill":85,"./Renderer":88}],88:[function(_dh2cr_,module,exports){
+},{"../bounds":69,"../gradient/LinearGradientContainer":77,"../gradient/RadialGradientContainer":78,"../log":83,"../parsing/transform":86,"../polyfill":87,"./Renderer":90}],90:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('../log');
 
 function Renderer(width, height, images, options) {
@@ -6781,27 +6887,7 @@ Renderer.prototype.renderBackgroundRepeating = function(container, bounds, image
 
 module.exports = Renderer;
 
-},{"../log":81}],89:[function(_dh2cr_,module,exports){
-var NodeContainer = _dh2cr_('./nodecontainer');
-
-function StackingContext(hasOwnStacking, opacity, element, parent) {
-  NodeContainer.call(this, element, parent);
-  this.ownStacking = hasOwnStacking;
-  this.contexts = [];
-  this.children = [];
-  this.opacity = (this.parent ? this.parent.stack.opacity : 1) * opacity;
-}
-
-StackingContext.prototype = Object.create(NodeContainer.prototype);
-
-StackingContext.prototype.getParentStack = function(context) {
-  var parentStack = (this.parent) ? this.parent.stack : null;
-  return parentStack ? (parentStack.ownStacking ? parentStack : parentStack.getParentStack(context)) : context.stack;
-};
-
-module.exports = StackingContext;
-
-},{"./nodecontainer":82}],90:[function(_dh2cr_,module,exports){
+},{"../log":83}],91:[function(_dh2cr_,module,exports){
 function Support(document) {
   this.rangeBounds = this.testRangeBounds(document);
   this.cors = this.testCORS();
@@ -6839,7 +6925,7 @@ Support.prototype.testCORS = function() {
 
 module.exports = Support;
 
-},{}],91:[function(_dh2cr_,module,exports){
+},{}],92:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
 var XHR = _dh2cr_('../xhr');
@@ -6910,7 +6996,7 @@ SVGContainer.prototype.decode64 = function(str) {
 
 module.exports = SVGContainer;
 
-},{"../polyfill":85,"../utils":95,"../xhr":96,"./SVGParser.js":93}],92:[function(_dh2cr_,module,exports){
+},{"../polyfill":87,"../utils":96,"../xhr":97,"./SVGParser.js":94}],93:[function(_dh2cr_,module,exports){
 var SVGContainer = _dh2cr_('./SVGContainer');
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
@@ -6966,7 +7052,7 @@ SVGNodeContainer.prototype = Object.create(SVGContainer.prototype);
 
 module.exports = SVGNodeContainer;
 
-},{"../polyfill":85,"../utils":95,"./SVGContainer":91,"./SVGParser.js":93}],93:[function(_dh2cr_,module,exports){
+},{"../polyfill":87,"../utils":96,"./SVGContainer":92,"./SVGParser.js":94}],94:[function(_dh2cr_,module,exports){
 var Color = _dh2cr_('../color');
 var log = _dh2cr_('../log');
 var XHR = _dh2cr_('../xhr');
@@ -10226,7 +10312,7 @@ function build(opts) {
   return svg;
 }
 
-},{"../BoundingBox":67,"../color":69,"../log":81,"../xhr":96}],94:[function(_dh2cr_,module,exports){
+},{"../BoundingBox":67,"../color":71,"../log":83,"../xhr":97}],95:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 function TextContainer(node, parent) {
@@ -10261,7 +10347,7 @@ function capitalize(m, p1, p2) {
 
 module.exports = TextContainer;
 
-},{"./nodecontainer":82}],95:[function(_dh2cr_,module,exports){
+},{"./nodecontainer":84}],96:[function(_dh2cr_,module,exports){
 var BoundingBox = _dh2cr_('./BoundingBox');
 
 exports.smallImage = function smallImage() {
@@ -10449,7 +10535,7 @@ exports.parseBackgrounds = function(backgroundImage) {
   return results;
 };
 
-},{"./BoundingBox":67,"base64-arraybuffer":1}],96:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"base64-arraybuffer":1}],97:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 
@@ -10476,5 +10562,5 @@ function XHR(url) {
 
 module.exports = XHR;
 
-},{"./polyfill":85}]},{},[80])(80)
+},{"./polyfill":87}]},{},[82])(82)
 });

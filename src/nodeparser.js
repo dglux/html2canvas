@@ -7,12 +7,13 @@ var PseudoElementContainer = require('./pseudoelementcontainer');
 var FontMetrics = require('./fontmetrics');
 var Color = require('./color');
 var { Promise } = require("./polyfill");
-var StackingContext = require('./stackingcontext');
+var StackingContext = require('./StackingContext');
 var utils = require('./utils');
 var bind = utils.bind;
 var getBounds = utils.getBounds;
 var parseBackgrounds = utils.parseBackgrounds;
-var offsetBounds = utils.offsetBounds;
+
+const { Clip } = require("./bounds");
 
 function NodeParser(element, renderer, support, imageLoader, options) {
   log("Starting NodeParser");
@@ -90,12 +91,15 @@ NodeParser.prototype.calculateOverflowClips = function() {
           (container.node.scrollWidth >= container.node.clientWidth ||
           container.node.scrollHeight >= container.node.clientHeight));
 
-      const transform = container.parseTransform();
+      const clip = new Clip([], container.hasTransform() ? container.parseTransform() : null);
 
-      var clip = hasOverflowClip ? [["transform", transform], container.borders.clip] : [["transform", transform]];
-      var cssClip = container.parseClip();
-      if(cssClip && ["absolute", "fixed"].indexOf(container.css('position')) !== -1) {
-        clip.push([["rect",
+      if (hasOverflowClip) {
+        clip.addShape(container.borders.clip);
+      }
+
+      const cssClip = container.parseClip();
+      if(cssClip && ["absolute", "fixed"].indexOf(container.css("position")) !== -1) {
+        clip.addShape([["rect",
           container.bounds.x + cssClip.x,
           container.bounds.y + cssClip.y,
           cssClip.x2 - cssClip.x,
@@ -103,13 +107,20 @@ NodeParser.prototype.calculateOverflowClips = function() {
         ]]);
       }
 
-      container.clip = hasParentClip(container) ? container.parent.clip.concat(clip) : clip;
-      container.backgroundClip = !hasOverflowClip ? container.clip.concat([container.borders.clip]) : container.clip;
+      if (hasParentClip(container)) {
+        clip.parent = container.parent.clip;
+      }
+
+      container.clip = clip;
+      container.backgroundClip = !hasOverflowClip ?
+          container.clip.clone().addShape(container.borders.clip) :
+          container.clip;
+      
       if(isPseudoElement(container)) {
         container.cleanDOM();
       }
-    } else if(isTextNode(container)) {
-      container.clip = hasParentClip(container) ? container.parent.clip : [];
+    } else if (isTextNode(container)) {
+      container.clip = hasParentClip(container) ? container.parent.clip : new Clip();
     }
     if(!isPseudoElement(container)) {
       container.bounds = null;
@@ -118,20 +129,21 @@ NodeParser.prototype.calculateOverflowClips = function() {
 };
 
 function hasParentClip(container) {
-  return container.parent && container.parent.clip.length;
+  return container.parent && container.parent.clip.shapes.length;
 }
 
 NodeParser.prototype.asyncRenderer = function(queue, resolve, asyncTimer) {
   asyncTimer = asyncTimer || Date.now();
   this.paint(queue[this.renderIndex++]);
+
   if(queue.length === this.renderIndex) {
     resolve();
   } else if(asyncTimer + 20 > Date.now()) {
     this.asyncRenderer(queue, resolve, asyncTimer);
   } else {
-    setTimeout(bind(function() {
+    window.requestAnimationFrame(_ => {
       this.asyncRenderer(queue, resolve);
-    }, this), 0);
+    });
   }
 };
 
@@ -270,8 +282,9 @@ NodeParser.prototype.getRangeBounds = function(node, offset, length) {
   return new BoundingBox(rect.left, rect.top, rect.right, rect.bottom);
 };
 
-function ClearTransform() {
-}
+NodeParser.FLAGS = {
+  CLEAR_TRANSFORM: "CLEAR_TRANSFORM"
+};
 
 NodeParser.prototype.parse = function(stack) {
   // http://www.w3.org/TR/CSS21/visuren.html#z-index
@@ -289,29 +302,29 @@ NodeParser.prototype.parse = function(stack) {
       this.renderQueue.push(container);
       if(isStackingContext(container)) {
         this.parse(container);
-        this.renderQueue.push(new ClearTransform());
+        this.renderQueue.push(NodeParser.FLAGS.CLEAR_TRANSFORM);
       }
     }, this);
 };
 
 NodeParser.prototype.paint = function(container) {
   try {
-    if(container instanceof ClearTransform) {
-      this.renderer.restore();
-    } else if(isTextNode(container)) {
-      if(isPseudoElement(container.parent)) {
+    if (container === NodeParser.FLAGS.CLEAR_TRANSFORM) {
+      this.renderer.popTransform();
+    } else if (isTextNode(container)) {
+      if (isPseudoElement(container.parent)) {
         container.parent.appendToDOM();
       }
       this.paintText(container);
-      if(isPseudoElement(container.parent)) {
+      if (isPseudoElement(container.parent)) {
         container.parent.cleanDOM();
       }
     } else {
       this.paintNode(container);
     }
-  } catch(e) {
+  } catch (e) {
     log(e);
-    if(this.options.strict) {
+    if (this.options.strict) {
       throw e;
     }
   }
@@ -320,13 +333,12 @@ NodeParser.prototype.paint = function(container) {
 NodeParser.prototype.paintNode = function(container) {
   if(isStackingContext(container)) {
     this.renderer.setOpacity(container.opacity);
-    this.renderer.save();
-    this.renderer.setTransform(container.parseTransform());
+    this.renderer.pushTransform(container.parseTransform());
   }
 
-  if(container.node.nodeName === "INPUT" && container.node.type === "checkbox") {
+  if (container.node.nodeName === "INPUT" && container.node.type === "checkbox") {
     this.paintCheckbox(container);
-  } else if(container.node.nodeName === "INPUT" && container.node.type === "radio") {
+  } else if (container.node.nodeName === "INPUT" && container.node.type === "radio") {
     this.paintRadio(container);
   } else {
     this.paintElement(container);
@@ -342,7 +354,7 @@ NodeParser.prototype.paintElement = function(container) {
       if(shadow.inset)
         return;
 
-      shadow.blur = shadow.blur * this.renderer.getTransform().matrix[0];
+      shadow.blur = shadow.blur;
 
       var alpha = shadow.color.a;
       shadow.color.a = 255;
@@ -385,7 +397,7 @@ NodeParser.prototype.paintElement = function(container) {
         if(!shadow.inset)
           return;
 
-        shadow.blur = shadow.blur * this.renderer.getTransform().matrix[0];
+        shadow.blur = shadow.blur;
 
         var alpha = shadow.color.a;
         shadow.color.a = 255;
