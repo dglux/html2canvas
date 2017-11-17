@@ -5,6 +5,7 @@ const { Clip } = require("./bounds");
 const { getBounds, parseBackgrounds, offsetBounds } = require("./utils");
 
 const { parseTransform, parseTransformMatrix } = require("./parsing/transform");
+const { parseBoxShadows } = require("./parsing/boxShadow");
 
 function NodeContainer(node, parent) {
   this.node = node;
@@ -66,12 +67,15 @@ NodeContainer.prototype.css = function(attribute) {
 NodeContainer.prototype.prefixedCss = function(attribute) {
   var prefixes = ["webkit", "moz", "ms", "o"];
   var value = this.css(attribute);
+
   if(value === undefined) {
-    prefixes.some(function(prefix) {
-      value = this.css(prefix + attribute.substr(0, 1).toUpperCase() + attribute.substr(1));
+    const attributeTitleCase = attribute.substr(0, 1).toUpperCase() + attribute.substr(1);
+    prefixes.some(prefix => {
+      value = this.css(prefix + attributeTitleCase);
       return value !== undefined;
-    }, this);
+    });
   }
+
   return value === undefined ? null : value;
 };
 
@@ -208,42 +212,10 @@ NodeContainer.prototype.parseBackgroundRepeat = function(index) {
 
 NodeContainer.prototype.SHADOW_PROPERTY = /(?!\([0-9\s.]+),(?![0-9\s.,]+\))/g;
 
-NodeContainer.prototype.BOX_SHADOW_VALUES = /(inset)|(-?\d+px)|(#.+)|(rgb\(.+\))|(rgba\(.+\))/g;
 NodeContainer.prototype.TEXT_SHADOW_VALUES = /(-?\d+px)|(#.+)|(rgb\(.+\))|(rgba\(.+\))/g;
 
 NodeContainer.prototype.parseBoxShadows = function() {
-  var boxShadow = this.css("boxShadow");
-  var results = [];
-
-  if(boxShadow && boxShadow !== 'none') {
-    var shadows = boxShadow.split(this.SHADOW_PROPERTY);
-    for(var i = 0; shadows && (i < shadows.length); i++) {
-      var s = shadows[i].match(this.BOX_SHADOW_VALUES);
-
-      var ci = 0;
-      var insetEndTest = s[s.length - 1] === 'inset';
-      var isInset = s[0] === 'inset' || insetEndTest;
-
-      var color = new Color((!isInset || insetEndTest) ? s[ci] : s[s.length - 1]);
-
-      if(!isInset && (!color.isColor || isNaN(s[ci]))) {
-        ci = -1;
-        color = new Color(s[s.length - 1]);
-      }
-
-      var result = {
-        color: color,
-        offsetX: s[ci + 1] && s[ci + 1] !== 'inset' ? parseFloat(s[ci + 1]) : 0,
-        offsetY: s[ci + 2] && s[ci + 2] !== 'inset' ? parseFloat(s[ci + 2]) : 0,
-        blur: s[ci + 3] && s[ci + 3] !== 'inset' ? parseFloat(s[ci + 3]) : 0,
-        spread: (s[ci + 4] && s[ci + 4] !== 'inset') ? parseFloat(s[ci + 4]) : 0,
-        inset: isInset
-      };
-      
-      results.push(result);
-    }
-  }
-  return results;
+  return this.boxShadows || (this.boxShadows = parseBoxShadows(this));
 };
 
 NodeContainer.prototype.parseTextShadows = function() {

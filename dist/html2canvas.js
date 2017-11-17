@@ -3425,7 +3425,21 @@ BoundingBox.prototype.inflate = function(paddingX, paddingY) {
   this.y1 -= paddingY;
   this.x2 += paddingX;
   this.y2 += paddingY;
+
+  return this;
 }
+
+BoundingBox.prototype.multScalar = function(scalar) {
+  var dx = this.width * (scalar - 1) / 2;
+  var dy = this.height * (scalar - 1) / 2;
+
+  this.x1 -= dx;
+  this.y1 -= dy;
+  this.x2 += dx;
+  this.y2 += dy;
+
+  return this;
+};
 
 BoundingBox.prototype.clone = function() {
   return new BoundingBox(this.x1, this.y1, this.x2, this.y2);
@@ -3591,7 +3605,7 @@ module.exports = function(ownerDocument, containerDocument, width, height, optio
   });
 };
 
-},{"./log":83,"./polyfill":87,"./utils":96}],71:[function(_dh2cr_,module,exports){
+},{"./log":83,"./polyfill":88,"./utils":97}],71:[function(_dh2cr_,module,exports){
 // http://dev.w3.org/csswg/css-color/
 
 function Color(value) {
@@ -3889,7 +3903,7 @@ function DummyImageContainer(src) {
 
 module.exports = DummyImageContainer;
 
-},{"./log":83,"./polyfill":87,"./utils":96}],73:[function(_dh2cr_,module,exports){
+},{"./log":83,"./polyfill":88,"./utils":97}],73:[function(_dh2cr_,module,exports){
 var smallImage = _dh2cr_('./utils').smallImage;
 
 function Font(family, size) {
@@ -3943,7 +3957,7 @@ function Font(family, size) {
 
 module.exports = Font;
 
-},{"./utils":96}],74:[function(_dh2cr_,module,exports){
+},{"./utils":97}],74:[function(_dh2cr_,module,exports){
 var Font = _dh2cr_('./font');
 
 function FontMetrics() {
@@ -4001,7 +4015,7 @@ function FrameContainer(container, options) {
 
 module.exports = FrameContainer;
 
-},{"./":82,"./polyfill":87,"./utils":96}],76:[function(_dh2cr_,module,exports){
+},{"./":82,"./polyfill":88,"./utils":97}],76:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
 
@@ -4023,7 +4037,7 @@ GradientContainer.prototype.TYPES = {
 
 module.exports = GradientContainer;
 
-},{"../polyfill":87}],77:[function(_dh2cr_,module,exports){
+},{"../polyfill":88}],77:[function(_dh2cr_,module,exports){
 var GradientContainer = _dh2cr_('./GradientContainer');
 var Color = _dh2cr_('../color');
 
@@ -4335,7 +4349,7 @@ function ImageContainer(src, cors) {
 
 module.exports = ImageContainer;
 
-},{"./polyfill":87}],81:[function(_dh2cr_,module,exports){
+},{"./polyfill":88}],81:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 var log = _dh2cr_('./log');
@@ -4517,7 +4531,7 @@ ImageLoader.prototype.timeout = function(container, timeout) {
 
 module.exports = ImageLoader;
 
-},{"./dummyimagecontainer":72,"./framecontainer":75,"./gradient/LinearGradientContainer":77,"./gradient/RadialGradientContainer":78,"./gradient/WebKitGradientContainer":79,"./imagecontainer":80,"./log":83,"./polyfill":87,"./svg/SVGContainer":92,"./svg/SVGNodeContainer":93,"./utils":96}],82:[function(_dh2cr_,module,exports){
+},{"./dummyimagecontainer":72,"./framecontainer":75,"./gradient/LinearGradientContainer":77,"./gradient/RadialGradientContainer":78,"./gradient/WebKitGradientContainer":79,"./imagecontainer":80,"./log":83,"./polyfill":88,"./svg/SVGContainer":93,"./svg/SVGNodeContainer":94,"./utils":97}],82:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 var Support = _dh2cr_('./support');
@@ -4813,7 +4827,7 @@ module.exports = (typeof(document) === "undefined" || typeof(Object.create) !== 
   return Promise.reject("No canvas support");
 } : html2canvas;
 
-},{"./BoundingBox":67,"./clone":70,"./imageloader":81,"./log":83,"./nodecontainer":84,"./nodeparser":85,"./polyfill":87,"./renderer/CanvasRenderer":89,"./support":91,"./utils":96}],83:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./clone":70,"./imageloader":81,"./log":83,"./nodecontainer":84,"./nodeparser":85,"./polyfill":88,"./renderer/CanvasRenderer":90,"./support":92,"./utils":97}],83:[function(_dh2cr_,module,exports){
 var getFormat = function (args) { return [
     (((Date.now() - window.html2canvas.start)) + "ms"),
     'html2canvas:'
@@ -4843,6 +4857,8 @@ var offsetBounds = ref$1.offsetBounds;
 var ref$2 = _dh2cr_("./parsing/transform");
 var parseTransform = ref$2.parseTransform;
 var parseTransformMatrix = ref$2.parseTransformMatrix;
+var ref$3 = _dh2cr_("./parsing/boxShadow");
+var parseBoxShadows = ref$3.parseBoxShadows;
 
 function NodeContainer(node, parent) {
   this.node = node;
@@ -4902,14 +4918,19 @@ NodeContainer.prototype.css = function(attribute) {
 };
 
 NodeContainer.prototype.prefixedCss = function(attribute) {
+  var this$1 = this;
+
   var prefixes = ["webkit", "moz", "ms", "o"];
   var value = this.css(attribute);
+
   if(value === undefined) {
-    prefixes.some(function(prefix) {
-      value = this.css(prefix + attribute.substr(0, 1).toUpperCase() + attribute.substr(1));
+    var attributeTitleCase = attribute.substr(0, 1).toUpperCase() + attribute.substr(1);
+    prefixes.some(function (prefix) {
+      value = this$1.css(prefix + attributeTitleCase);
       return value !== undefined;
-    }, this);
+    });
   }
+
   return value === undefined ? null : value;
 };
 
@@ -5046,44 +5067,10 @@ NodeContainer.prototype.parseBackgroundRepeat = function(index) {
 
 NodeContainer.prototype.SHADOW_PROPERTY = /(?!\([0-9\s.]+),(?![0-9\s.,]+\))/g;
 
-NodeContainer.prototype.BOX_SHADOW_VALUES = /(inset)|(-?\d+px)|(#.+)|(rgb\(.+\))|(rgba\(.+\))/g;
 NodeContainer.prototype.TEXT_SHADOW_VALUES = /(-?\d+px)|(#.+)|(rgb\(.+\))|(rgba\(.+\))/g;
 
 NodeContainer.prototype.parseBoxShadows = function() {
-  var this$1 = this;
-
-  var boxShadow = this.css("boxShadow");
-  var results = [];
-
-  if(boxShadow && boxShadow !== 'none') {
-    var shadows = boxShadow.split(this.SHADOW_PROPERTY);
-    for(var i = 0; shadows && (i < shadows.length); i++) {
-      var s = shadows[i].match(this$1.BOX_SHADOW_VALUES);
-
-      var ci = 0;
-      var insetEndTest = s[s.length - 1] === 'inset';
-      var isInset = s[0] === 'inset' || insetEndTest;
-
-      var color = new Color((!isInset || insetEndTest) ? s[ci] : s[s.length - 1]);
-
-      if(!isInset && (!color.isColor || isNaN(s[ci]))) {
-        ci = -1;
-        color = new Color(s[s.length - 1]);
-      }
-
-      var result = {
-        color: color,
-        offsetX: s[ci + 1] && s[ci + 1] !== 'inset' ? parseFloat(s[ci + 1]) : 0,
-        offsetY: s[ci + 2] && s[ci + 2] !== 'inset' ? parseFloat(s[ci + 2]) : 0,
-        blur: s[ci + 3] && s[ci + 3] !== 'inset' ? parseFloat(s[ci + 3]) : 0,
-        spread: (s[ci + 4] && s[ci + 4] !== 'inset') ? parseFloat(s[ci + 4]) : 0,
-        inset: isInset
-      };
-      
-      results.push(result);
-    }
-  }
-  return results;
+  return this.boxShadows || (this.boxShadows = parseBoxShadows(this));
 };
 
 NodeContainer.prototype.parseTextShadows = function() {
@@ -5155,7 +5142,7 @@ function isPercentage(value) {
 
 module.exports = NodeContainer;
 
-},{"./BoundingBox":67,"./bounds":69,"./color":71,"./parsing/transform":86,"./utils":96}],85:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./bounds":69,"./color":71,"./parsing/boxShadow":86,"./parsing/transform":87,"./utils":97}],85:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('./log');
 var punycode = _dh2cr_('punycode');
 var BoundingBox = _dh2cr_('./BoundingBox');
@@ -5513,88 +5500,59 @@ NodeParser.prototype.paintElement = function(container) {
   var bounds = container.parseBounds();
   
   var shadows = container.parseBoxShadows();
+  var shadowsInset = [];
+
   if(shadows.length > 0) {
-    shadows.forEach(function(shadow) {
-      if(shadow.inset)
-        { return; }
-
-      shadow.blur = shadow.blur;
-
-      var alpha = shadow.color.a;
-      shadow.color.a = 255;
-      this.renderer.setShadow(shadow.color.toString(), shadow.offsetX, shadow.offsetY, shadow.blur);
-      shadow.color.a = alpha;
+    shadows.forEach(function (shadow) {
+      if(shadow.inset) {
+        shadowsInset.push(shadow);
+        return;
+      }
 
       var newBounds = bounds.clone();
 
       newBounds.inflate(shadow.spread);
 
-      if(container.css('boxSizing') === 'content-box') {
-        newBounds.x += container.borders.borders[3].width;
-        newBounds.y += container.borders.borders[0].width;
-        newBounds.x2 -= container.borders.borders[1].width;
-        newBounds.y2 -= 2 * container.borders.borders[2].width;
-      }
-
-      newBounds.x += shadow.offsetX;
-      newBounds.y += shadow.offsetY;
+      newBounds.x1 += shadow.offsetX;
       newBounds.x2 += shadow.offsetX;
+      
+      newBounds.y1 += shadow.offsetY;
       newBounds.y2 += shadow.offsetY;
 
       var radius = getBorderRadiusData(container, container.borders.borders, newBounds);
       var borderPoints = calculateCurvePoints(newBounds, radius, container.borders.borders);
-
-      this.renderer.drawShape(this.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds), shadow.color);
-
-      this.renderer.clearShadow();
-    }, this);
+      var clipShape = this$1.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds);
+      
+      this$1.renderer.drawShadow(clipShape, shadow);
+    });
   }
 
   this.renderer.clip(container.backgroundClip, function () {
     this$1.renderer.renderBackground(container, bounds, container.borders.borders.map(getWidth));
   });
 
-  this.renderer.clip(container.backgroundClip, function() {
-    if(shadows.length > 0) {
+  this.renderer.clip(container.backgroundClip, function () {
+    if(shadowsInset.length > 0) {
       // draw inset shadows
-      shadows.forEach(function(shadow) {
-        if(!shadow.inset)
-          { return; }
-
-        shadow.blur = shadow.blur;
-
-        var alpha = shadow.color.a;
-        shadow.color.a = 255;
-        this.renderer.setShadow(shadow.color.toString(), 0, 0, shadow.blur);
-        shadow.color.a = alpha;
-        this.renderer.setFillStyle(shadow.color);
-
+      shadowsInset.forEach(function (shadow) {
         var newBounds = bounds.clone();
 
         newBounds.inflate(-shadow.spread);
 
-        if(container.css('boxSizing') === 'content-box') {
-          newBounds.x += container.borders.borders[3].width;
-          newBounds.y += container.borders.borders[0].width;
-          newBounds.x2 -= container.borders.borders[1].width;
-          newBounds.y2 -= container.borders.borders[2].width;
-        }
-
-        newBounds.x += shadow.offsetX;
-        newBounds.y += shadow.offsetY;
+        newBounds.x1 += shadow.offsetX;
         newBounds.x2 += shadow.offsetX;
+        
+        newBounds.y1 += shadow.offsetY;
         newBounds.y2 += shadow.offsetY;
 
         var radius = getBorderRadiusData(container, container.borders.borders, newBounds);
         var borderPoints = calculateCurvePoints(newBounds, radius, container.borders.borders);
+        var clipShape = this$1.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds);
 
-        this.renderer.shape(this.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds));
-        this.renderer.drawInsetShadow(bounds.x - newBounds.width, newBounds.y - newBounds.height, newBounds.width * 3, newBounds.height * 3);
-
-        this.renderer.clearShadow();
-      }, this);
+        this$1.renderer.drawInsetShadow(clipShape, newBounds.clone().multScalar(3), shadow);
+      });
     }
-  }, this);
+  });
 
   this.renderer.clip(container.clip, function() {
     this.renderer.renderBorders(container.borders.borders);
@@ -6205,7 +6163,53 @@ function hasUnicode(string) {
 
 module.exports = NodeParser;
 
-},{"./BoundingBox":67,"./StackingContext":68,"./bounds":69,"./color":71,"./fontmetrics":74,"./log":83,"./nodecontainer":84,"./polyfill":87,"./pseudoelementcontainer":88,"./textcontainer":95,"./utils":96,"punycode":66}],86:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./StackingContext":68,"./bounds":69,"./color":71,"./fontmetrics":74,"./log":83,"./nodecontainer":84,"./polyfill":88,"./pseudoelementcontainer":89,"./textcontainer":96,"./utils":97,"punycode":66}],86:[function(_dh2cr_,module,exports){
+var Color = _dh2cr_("../color");
+
+var SHADOW_PROPERTY = /(?!\([0-9\s.]+),(?![0-9\s.,]+\))/g;
+var BOX_SHADOW_VALUES = /(inset)|(-?\d+px)|(#.+)|(rgb\(.+\))|(rgba\(.+\))/g;
+
+function parseBoxShadows(container) {
+  var boxShadow = container.css("boxShadow");
+  var results = [];
+
+  if(boxShadow && boxShadow !== 'none') {
+    var shadows = boxShadow.split(SHADOW_PROPERTY);
+    for(var i = 0; shadows && (i < shadows.length); i++) {
+      var s = shadows[i].match(BOX_SHADOW_VALUES);
+
+      var ci = 0;
+
+      var insetEndTest = s[s.length - 1] === 'inset';
+      var isInset = s[0] === 'inset' || insetEndTest;
+
+      var color = new Color((!isInset || insetEndTest) ? s[ci] : s[s.length - 1]);
+      
+      if(!isInset && !color.isColor) {
+        ci = -1;
+        color = new Color(s[s.length - 1]);
+      }
+      
+      var result = {
+        color: color,
+        offsetX: s[ci + 1] && s[ci + 1] !== 'inset' ? parseFloat(s[ci + 1]) : 0,
+        offsetY: s[ci + 2] && s[ci + 2] !== 'inset' ? parseFloat(s[ci + 2]) : 0,
+        blur: s[ci + 3] && s[ci + 3] !== 'inset' ? parseFloat(s[ci + 3]) : 0,
+        spread: (s[ci + 4] && s[ci + 4] !== 'inset') ? parseFloat(s[ci + 4]) : 0,
+        inset: isInset
+      };
+      
+      results.push(result);
+    }
+  }
+  return results;
+};
+
+module.exports = {
+  parseBoxShadows: parseBoxShadows
+};
+
+},{"../color":71}],87:[function(_dh2cr_,module,exports){
 
 // https://chromium.googlesource.com/chromium/blink/+/master/Source/platform/transforms/AffineTransform.cpp
 var CSSTransform = function CSSTransform(origin, matrix) {
@@ -6328,7 +6332,7 @@ module.exports = {
   parseTransformMatrix: parseTransformMatrix
 };
 
-},{}],87:[function(_dh2cr_,module,exports){
+},{}],88:[function(_dh2cr_,module,exports){
 (function (global){
 module.exports = {
   Promise: global.Promise || _dh2cr_("es6-promise").Promise,
@@ -6336,7 +6340,7 @@ module.exports = {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"es6-map":52,"es6-promise":58}],88:[function(_dh2cr_,module,exports){
+},{"es6-map":52,"es6-promise":58}],89:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 function PseudoElementContainer(node, parent, type) {
@@ -6376,7 +6380,7 @@ PseudoElementContainer.prototype.PSEUDO_HIDE_ELEMENT_CLASS_AFTER = "___html2canv
 
 module.exports = PseudoElementContainer;
 
-},{"./nodecontainer":84}],89:[function(_dh2cr_,module,exports){
+},{"./nodecontainer":84}],90:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Map = ref.Map;
 var Renderer = _dh2cr_("./Renderer");
@@ -6413,6 +6417,7 @@ var CanvasRenderer = (function (Renderer) {
     this.variables = new Map();
 
     this.transforms = new Map();
+    this.filterScale = 1 / this.scale;
     this.stackDepth = 1;
 
     log("Initialized CanvasRenderer with size", width, "x", height);
@@ -6563,9 +6568,50 @@ var CanvasRenderer = (function (Renderer) {
     this.setVariable("shadowColor", "rgba(0,0,0,0)");
   };
 
-  CanvasRenderer.prototype.drawInsetShadow = function drawInsetShadow (left, top, width, height) {
-    this.ctx.rect(left, top, width, height);
+  CanvasRenderer.prototype.drawShadow = function drawShadow (shape, shadow) {    
+    // on newer Chrome/Firefox versions,
+    // this is more accurate
+    if (this.ctx.filter) {
+      this.ctx.filter = "blur(" + (Math.round((shadow.blur || 0) * this.filterScale)) + "px)";
+      this.setFillStyle(shadow.color);
+      
+      this.shape(shape).fill();
+
+      this.ctx.filter = "none";
+      return;
+    }
+
+    this.setShadow(shadow.color, 0, 0, shadow.blur);
+    this.setFillStyle(shadow.color);
+    
+    this.shape(shape).fill();
+
+    this.clearShadow();    
+  };
+
+  CanvasRenderer.prototype.drawInsetShadow = function drawInsetShadow (shape, box, shadow) {
+    // on newer Chrome/Firefox versions,
+    // this is more accurate
+    if (this.ctx.filter) {
+      this.ctx.filter = "blur(" + (Math.round((shadow.blur || 0) * this.filterScale)) + "px)";
+      this.setFillStyle(shadow.color);
+      
+      this.shape(shape);
+      this.ctx.rect(box.x1, box.y1, box.width, box.height);
+      this.ctx.fill("evenodd");
+
+      this.ctx.filter = "none";
+      return;
+    }
+
+    this.setShadow(shadow.color, 0, 0, shadow.blur);
+    this.setFillStyle(shadow.color);
+
+    this.shape(shape);
+    this.ctx.rect(box.x1, box.y1, box.width, box.height);
     this.ctx.fill("evenodd");
+
+    this.clearShadow();    
   };
 
   CanvasRenderer.prototype.setOpacity = function setOpacity (opacity) {
@@ -6582,12 +6628,19 @@ var CanvasRenderer = (function (Renderer) {
     this.save();
 
     this.stackDepth++;
+
+    this.filterScale *= (transform.matrix[0] + transform.matrix[3]) / 2;
     this.transforms.set(this.stackDepth, transform);
 
     this.setTransform(transform);
   };
 
   CanvasRenderer.prototype.popTransform = function popTransform () {
+    if (this.transforms.has(this.stackDepth)) {
+      var transform = this.transforms.get(this.stackDepth);
+      this.filterScale /= (transform.matrix[0] + transform.matrix[3]) / 2;
+    }
+
     this.transforms.delete(this.stackDepth);
     this.stackDepth--;
 
@@ -6772,7 +6825,7 @@ var CanvasRenderer = (function (Renderer) {
 
 module.exports = CanvasRenderer;
 
-},{"../bounds":69,"../gradient/LinearGradientContainer":77,"../gradient/RadialGradientContainer":78,"../log":83,"../parsing/transform":86,"../polyfill":87,"./Renderer":90}],90:[function(_dh2cr_,module,exports){
+},{"../bounds":69,"../gradient/LinearGradientContainer":77,"../gradient/RadialGradientContainer":78,"../log":83,"../parsing/transform":87,"../polyfill":88,"./Renderer":91}],91:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('../log');
 
 function Renderer(width, height, images, options) {
@@ -6887,7 +6940,7 @@ Renderer.prototype.renderBackgroundRepeating = function(container, bounds, image
 
 module.exports = Renderer;
 
-},{"../log":83}],91:[function(_dh2cr_,module,exports){
+},{"../log":83}],92:[function(_dh2cr_,module,exports){
 function Support(document) {
   this.rangeBounds = this.testRangeBounds(document);
   this.cors = this.testCORS();
@@ -6925,7 +6978,7 @@ Support.prototype.testCORS = function() {
 
 module.exports = Support;
 
-},{}],92:[function(_dh2cr_,module,exports){
+},{}],93:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
 var XHR = _dh2cr_('../xhr');
@@ -6996,7 +7049,7 @@ SVGContainer.prototype.decode64 = function(str) {
 
 module.exports = SVGContainer;
 
-},{"../polyfill":87,"../utils":96,"../xhr":97,"./SVGParser.js":94}],93:[function(_dh2cr_,module,exports){
+},{"../polyfill":88,"../utils":97,"../xhr":98,"./SVGParser.js":95}],94:[function(_dh2cr_,module,exports){
 var SVGContainer = _dh2cr_('./SVGContainer');
 var ref = _dh2cr_("../polyfill");
 var Promise = ref.Promise;
@@ -7052,7 +7105,7 @@ SVGNodeContainer.prototype = Object.create(SVGContainer.prototype);
 
 module.exports = SVGNodeContainer;
 
-},{"../polyfill":87,"../utils":96,"./SVGContainer":92,"./SVGParser.js":94}],94:[function(_dh2cr_,module,exports){
+},{"../polyfill":88,"../utils":97,"./SVGContainer":93,"./SVGParser.js":95}],95:[function(_dh2cr_,module,exports){
 var Color = _dh2cr_('../color');
 var log = _dh2cr_('../log');
 var XHR = _dh2cr_('../xhr');
@@ -7921,8 +7974,8 @@ function build(opts) {
       if(this.style('visibility').value == 'hidden') { return; }
 
       ctx.save();
-      if(this.attribute('mask').hasValue()) { // mask
-        var mask = this.attribute('mask').getDefinition();
+      if(this.style('mask').hasValue()) { // mask
+        var mask = this.style('mask').getDefinition();
         if(mask != null) { mask.apply(ctx, this); }
       }
       else if(this.style('filter').hasValue()) { // filter
@@ -8116,8 +8169,8 @@ function build(opts) {
       }
 
       // clip
-      if(this.attribute('clip-path', false, true).hasValue()) {
-        var clip = this.attribute('clip-path', false, true).getDefinition();
+      if(this.style('clip-path', false, true).hasValue()) {
+        var clip = this.style('clip-path', false, true).getDefinition();
         if(clip != null) { clip.apply(ctx); }
       }
 
@@ -10312,7 +10365,7 @@ function build(opts) {
   return svg;
 }
 
-},{"../BoundingBox":67,"../color":71,"../log":83,"../xhr":97}],95:[function(_dh2cr_,module,exports){
+},{"../BoundingBox":67,"../color":71,"../log":83,"../xhr":98}],96:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 function TextContainer(node, parent) {
@@ -10347,7 +10400,7 @@ function capitalize(m, p1, p2) {
 
 module.exports = TextContainer;
 
-},{"./nodecontainer":84}],96:[function(_dh2cr_,module,exports){
+},{"./nodecontainer":84}],97:[function(_dh2cr_,module,exports){
 var BoundingBox = _dh2cr_('./BoundingBox');
 
 exports.smallImage = function smallImage() {
@@ -10535,7 +10588,7 @@ exports.parseBackgrounds = function(backgroundImage) {
   return results;
 };
 
-},{"./BoundingBox":67,"base64-arraybuffer":1}],97:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"base64-arraybuffer":1}],98:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 
@@ -10562,5 +10615,5 @@ function XHR(url) {
 
 module.exports = XHR;
 
-},{"./polyfill":87}]},{},[82])(82)
+},{"./polyfill":88}]},{},[82])(82)
 });

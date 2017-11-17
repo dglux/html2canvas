@@ -24,13 +24,14 @@
     <script type="text/javascript">
         window.onload = function () {
           var frame = document.createElement("iframe");
-          frame.src = 'client.html';
+          frame.src = 'htmlTest4.html';
           frame.width = '100%';
           frame.height = '100%';
           document.body.appendChild(frame);
 
           frame.onload = function() {
             console.log("Hello");
+
             var framedoc = frame.contentDocument || frame.contentWindow.document;
 
             html2canvas(framedoc.documentElement.innerHTML, { scale: 1, isDGLux: true, drawBounds: false }).then(function(canvas) {
@@ -44,6 +45,7 @@
               document.body.appendChild(image);
               console.log("Hello #2");
             });
+
           };
         };
     </script>

@@ -19,6 +19,7 @@ class CanvasRenderer extends Renderer {
   variables: Map<string, object>;
 
   transforms: Map<int, object>;
+  filterScale: num;
   stackDepth: int;
   */
 
@@ -44,6 +45,7 @@ class CanvasRenderer extends Renderer {
     this.variables = new Map();
 
     this.transforms = new Map();
+    this.filterScale = 1 / this.scale;
     this.stackDepth = 1;
 
     log("Initialized CanvasRenderer with size", width, "x", height);
@@ -188,9 +190,50 @@ class CanvasRenderer extends Renderer {
     this.setVariable("shadowColor", "rgba(0,0,0,0)");
   }
 
-  drawInsetShadow(left, top, width, height) {
-    this.ctx.rect(left, top, width, height);
+  drawShadow(shape, shadow) {    
+    // on newer Chrome/Firefox versions,
+    // this is more accurate
+    if (this.ctx.filter) {
+      this.ctx.filter = `blur(${Math.round((shadow.blur || 0) * this.filterScale)}px)`;
+      this.setFillStyle(shadow.color);
+      
+      this.shape(shape).fill();
+
+      this.ctx.filter = "none";
+      return;
+    }
+
+    this.setShadow(shadow.color, 0, 0, shadow.blur);
+    this.setFillStyle(shadow.color);
+    
+    this.shape(shape).fill();
+
+    this.clearShadow();    
+  }
+
+  drawInsetShadow(shape, box, shadow) {
+    // on newer Chrome/Firefox versions,
+    // this is more accurate
+    if (this.ctx.filter) {
+      this.ctx.filter = `blur(${Math.round((shadow.blur || 0) * this.filterScale)}px)`;
+      this.setFillStyle(shadow.color);
+      
+      this.shape(shape);
+      this.ctx.rect(box.x1, box.y1, box.width, box.height);
+      this.ctx.fill("evenodd");
+
+      this.ctx.filter = "none";
+      return;
+    }
+
+    this.setShadow(shadow.color, 0, 0, shadow.blur);
+    this.setFillStyle(shadow.color);
+
+    this.shape(shape);
+    this.ctx.rect(box.x1, box.y1, box.width, box.height);
     this.ctx.fill("evenodd");
+
+    this.clearShadow();    
   }
 
   setOpacity(opacity) {
@@ -207,12 +250,19 @@ class CanvasRenderer extends Renderer {
     this.save();
 
     this.stackDepth++;
+
+    this.filterScale *= (transform.matrix[0] + transform.matrix[3]) / 2;
     this.transforms.set(this.stackDepth, transform);
 
     this.setTransform(transform);
   }
 
   popTransform() {
+    if (this.transforms.has(this.stackDepth)) {
+      const transform = this.transforms.get(this.stackDepth);
+      this.filterScale /= (transform.matrix[0] + transform.matrix[3]) / 2;
+    }
+
     this.transforms.delete(this.stackDepth);
     this.stackDepth--;
 

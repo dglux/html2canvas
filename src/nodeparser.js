@@ -346,91 +346,62 @@ NodeParser.prototype.paintNode = function(container) {
 };
 
 NodeParser.prototype.paintElement = function(container) {
-  var bounds = container.parseBounds();
+  const bounds = container.parseBounds();
   
-  var shadows = container.parseBoxShadows();
+  const shadows = container.parseBoxShadows();
+  const shadowsInset = [];
+
   if(shadows.length > 0) {
-    shadows.forEach(function(shadow) {
-      if(shadow.inset)
+    shadows.forEach(shadow => {
+      if(shadow.inset) {
+        shadowsInset.push(shadow);
         return;
+      }
 
-      shadow.blur = shadow.blur;
-
-      var alpha = shadow.color.a;
-      shadow.color.a = 255;
-      this.renderer.setShadow(shadow.color.toString(), shadow.offsetX, shadow.offsetY, shadow.blur);
-      shadow.color.a = alpha;
-
-      var newBounds = bounds.clone();
+      const newBounds = bounds.clone();
 
       newBounds.inflate(shadow.spread);
 
-      if(container.css('boxSizing') === 'content-box') {
-        newBounds.x += container.borders.borders[3].width;
-        newBounds.y += container.borders.borders[0].width;
-        newBounds.x2 -= container.borders.borders[1].width;
-        newBounds.y2 -= 2 * container.borders.borders[2].width;
-      }
-
-      newBounds.x += shadow.offsetX;
-      newBounds.y += shadow.offsetY;
+      newBounds.x1 += shadow.offsetX;
       newBounds.x2 += shadow.offsetX;
+      
+      newBounds.y1 += shadow.offsetY;
       newBounds.y2 += shadow.offsetY;
 
-      var radius = getBorderRadiusData(container, container.borders.borders, newBounds);
-      var borderPoints = calculateCurvePoints(newBounds, radius, container.borders.borders);
-
-      this.renderer.drawShape(this.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds), shadow.color);
-
-      this.renderer.clearShadow();
-    }, this);
+      const radius = getBorderRadiusData(container, container.borders.borders, newBounds);
+      const borderPoints = calculateCurvePoints(newBounds, radius, container.borders.borders);
+      const clipShape = this.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds);
+      
+      this.renderer.drawShadow(clipShape, shadow);
+    });
   }
 
   this.renderer.clip(container.backgroundClip, () => {
     this.renderer.renderBackground(container, bounds, container.borders.borders.map(getWidth));
   });
 
-  this.renderer.clip(container.backgroundClip, function() {
-    if(shadows.length > 0) {
+  this.renderer.clip(container.backgroundClip, () => {
+    if(shadowsInset.length > 0) {
       // draw inset shadows
-      shadows.forEach(function(shadow) {
-        if(!shadow.inset)
-          return;
-
-        shadow.blur = shadow.blur;
-
-        var alpha = shadow.color.a;
-        shadow.color.a = 255;
-        this.renderer.setShadow(shadow.color.toString(), 0, 0, shadow.blur);
-        shadow.color.a = alpha;
-        this.renderer.setFillStyle(shadow.color);
-
-        var newBounds = bounds.clone();
+      shadowsInset.forEach(shadow => {
+        const newBounds = bounds.clone();
 
         newBounds.inflate(-shadow.spread);
 
-        if(container.css('boxSizing') === 'content-box') {
-          newBounds.x += container.borders.borders[3].width;
-          newBounds.y += container.borders.borders[0].width;
-          newBounds.x2 -= container.borders.borders[1].width;
-          newBounds.y2 -= container.borders.borders[2].width;
-        }
-
-        newBounds.x += shadow.offsetX;
-        newBounds.y += shadow.offsetY;
+        newBounds.x1 += shadow.offsetX;
         newBounds.x2 += shadow.offsetX;
+        
+        newBounds.y1 += shadow.offsetY;
         newBounds.y2 += shadow.offsetY;
 
-        var radius = getBorderRadiusData(container, container.borders.borders, newBounds);
-        var borderPoints = calculateCurvePoints(newBounds, radius, container.borders.borders);
+        const radius = getBorderRadiusData(container, container.borders.borders, newBounds);
+        const borderPoints = calculateCurvePoints(newBounds, radius, container.borders.borders);
+        const clipShape = this.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds);
 
-        this.renderer.shape(this.parseBackgroundClip(container, borderPoints, container.borders.borders, radius, newBounds));
-        this.renderer.drawInsetShadow(bounds.x - newBounds.width, newBounds.y - newBounds.height, newBounds.width * 3, newBounds.height * 3);
-
-        this.renderer.clearShadow();
-      }, this);
+        this.renderer.drawInsetShadow(clipShape, newBounds.clone().multScalar(3), shadow);
+      });
     }
-  }, this);
+  });
 
   this.renderer.clip(container.clip, function() {
     this.renderer.renderBorders(container.borders.borders);

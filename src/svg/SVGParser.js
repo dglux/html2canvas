@@ -852,8 +852,8 @@ function build(opts) {
       if(this.style('visibility').value == 'hidden') return;
 
       ctx.save();
-      if(this.attribute('mask').hasValue()) { // mask
-        var mask = this.attribute('mask').getDefinition();
+      if(this.style('mask').hasValue()) { // mask
+        var mask = this.style('mask').getDefinition();
         if(mask != null) mask.apply(ctx, this);
       }
       else if(this.style('filter').hasValue()) { // filter
@@ -1043,8 +1043,8 @@ function build(opts) {
       }
 
       // clip
-      if(this.attribute('clip-path', false, true).hasValue()) {
-        var clip = this.attribute('clip-path', false, true).getDefinition();
+      if(this.style('clip-path', false, true).hasValue()) {
+        var clip = this.style('clip-path', false, true).getDefinition();
         if(clip != null) clip.apply(ctx);
       }
 

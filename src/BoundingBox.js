@@ -66,7 +66,21 @@ BoundingBox.prototype.inflate = function(paddingX, paddingY) {
   this.y1 -= paddingY;
   this.x2 += paddingX;
   this.y2 += paddingY;
+
+  return this;
 }
+
+BoundingBox.prototype.multScalar = function(scalar) {
+  const dx = this.width * (scalar - 1) / 2;
+  const dy = this.height * (scalar - 1) / 2;
+
+  this.x1 -= dx;
+  this.y1 -= dy;
+  this.x2 += dx;
+  this.y2 += dy;
+
+  return this;
+};
 
 BoundingBox.prototype.clone = function() {
   return new BoundingBox(this.x1, this.y1, this.x2, this.y2);
