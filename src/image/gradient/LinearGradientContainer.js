@@ -9,7 +9,7 @@ module.exports = class LinearGradientContainer extends GradientContainer {
     super(imageData, container, container.parseBounds());
     const bounds = container.parseBounds();
     
-    this.type = this.TYPES.LINEAR;
+    this.type = GradientContainer.TYPES.LINEAR;
 
     const hasDirection = imageData.args[0].indexOf(STEP_REGEX) === -1;
 

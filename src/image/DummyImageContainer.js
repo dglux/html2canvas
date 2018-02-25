@@ -17,12 +17,12 @@ module.exports = class DummyImageContainer extends BaseImageContainer {
   }
 
   get promise() {
-    if (this.promise) {
-      return this.promise;
+    if (this._promise) {
+      return this._promise;
     }
 
     const image = this.image;
-    return this.promise = new Promise((resolve, reject) => {
+    return this._promise = new Promise((resolve, reject) => {
       image.onload = resolve;
       image.onerror = reject;
       image.src = smallImage();

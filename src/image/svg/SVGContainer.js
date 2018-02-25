@@ -52,17 +52,17 @@ module.exports = class SVGContainer extends BaseImageContainer {
     
     SVGParser.parse(canvas, renderObj, {
       renderCallback: obj => {
-        self.bb = obj.bounds;
+        this.bb = obj.bounds;
 
-        self.image.style.width = self.bb.width + "px";
-        self.image.style.height = self.bb.height + "px";
+        this.image.style.width = this.bb.width + "px";
+        this.image.style.height = this.bb.height + "px";
 
-        self.image.width = self.bb.width * self.scale;
-        self.image.height = self.bb.height * self.scale;
+        this.image.width = this.bb.width * this.scale;
+        this.image.height = this.bb.height * this.scale;
 
-        SVGParser.parse(self.image, renderObj, {
+        SVGParser.parse(this.image, renderObj, {
           ignoreDimensions: true,
-          scale: self.scale,
+          scale: this.scale,
           renderCallback: obj => {
             completer.resolve();
           }
@@ -73,7 +73,7 @@ module.exports = class SVGContainer extends BaseImageContainer {
     return completer.promise;
   }
 
-  getBounds(b) {
+  getBounds(bounds) {
     const nb = new BoundingBox();
 
     nb.x1 = bounds.x1 + this.bb.x1;

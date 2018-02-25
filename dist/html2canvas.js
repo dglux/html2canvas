@@ -3523,12 +3523,12 @@ module.exports = (function (BaseImageContainer) {
   };
 
   prototypeAccessors.promise.get = function () {
-    if (this.promise) {
-      return this.promise;
+    if (this._promise) {
+      return this._promise;
     }
 
     var image = this.image;
-    return this.promise = new Promise(function (resolve, reject) {
+    return this._promise = new Promise(function (resolve, reject) {
       image.onload = resolve;
       image.onerror = reject;
       image.src = smallImage();
@@ -3552,6 +3552,8 @@ var BaseImageContainer = _dh2cr_("./BaseImageContainer");
 
 module.exports = (function (BaseImageContainer) {
   function FrameContainer(container, options) {
+    var this$1 = this;
+
     this.image = null;
     this.src = container;
     this.isScaled = false;
@@ -3580,7 +3582,7 @@ module.exports = (function (BaseImageContainer) {
         allowTaint: options.allowTaint,
         imageTimeout: options.imageTimeout / 2
       });
-    }).then(function (canvas) { return (self.image = canvas); });
+    }).then(function (canvas) { return (this$1.image = canvas); });
   }
 
   if ( BaseImageContainer ) FrameContainer.__proto__ = BaseImageContainer;
@@ -3682,7 +3684,7 @@ module.exports = (function (GradientContainer) {
     GradientContainer.call(this, imageData, container, container.parseBounds());
     var bounds = container.parseBounds();
     
-    this.type = this.TYPES.LINEAR;
+    this.type = GradientContainer.TYPES.LINEAR;
 
     var hasDirection = imageData.args[0].indexOf(STEP_REGEX) === -1;
 
@@ -3843,7 +3845,7 @@ module.exports = (function (GradientContainer) {
     GradientContainer.call(this, imageData, container, container.parseBounds());
     var bounds = container.parseBounds();
     
-    this.type = this.TYPES.RADIAL;
+    this.type = GradientContainer.TYPES.LINEAR;
 
     var args = imageData.args;
     var hasDirection = args[0].indexOf(this.stepRegExp) === -1;
@@ -4018,6 +4020,8 @@ module.exports = (function (BaseImageContainer) {
   // first pass is to get bounding box only
   // second pass is to render w/ scale
   SVGContainer.prototype.completePromise = function completePromise (renderObj) {
+    var this$1 = this;
+
     var completer = new Completer();
 
     // dummy canvas for first pass
@@ -4025,17 +4029,17 @@ module.exports = (function (BaseImageContainer) {
     
     SVGParser.parse(canvas, renderObj, {
       renderCallback: function (obj) {
-        self.bb = obj.bounds;
+        this$1.bb = obj.bounds;
 
-        self.image.style.width = self.bb.width + "px";
-        self.image.style.height = self.bb.height + "px";
+        this$1.image.style.width = this$1.bb.width + "px";
+        this$1.image.style.height = this$1.bb.height + "px";
 
-        self.image.width = self.bb.width * self.scale;
-        self.image.height = self.bb.height * self.scale;
+        this$1.image.width = this$1.bb.width * this$1.scale;
+        this$1.image.height = this$1.bb.height * this$1.scale;
 
-        SVGParser.parse(self.image, renderObj, {
+        SVGParser.parse(this$1.image, renderObj, {
           ignoreDimensions: true,
-          scale: self.scale,
+          scale: this$1.scale,
           renderCallback: function (obj) {
             completer.resolve();
           }
@@ -4046,7 +4050,7 @@ module.exports = (function (BaseImageContainer) {
     return completer.promise;
   };
 
-  SVGContainer.prototype.getBounds = function getBounds (b) {
+  SVGContainer.prototype.getBounds = function getBounds (bounds) {
     var nb = new BoundingBox();
 
     nb.x1 = bounds.x1 + this.bb.x1;

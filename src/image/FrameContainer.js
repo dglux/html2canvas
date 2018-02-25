@@ -33,6 +33,6 @@ module.exports = class FrameContainer extends BaseImageContainer {
         allowTaint: options.allowTaint,
         imageTimeout: options.imageTimeout / 2
       });
-    }).then(canvas => (self.image = canvas));
+    }).then(canvas => (this.image = canvas));
   }
 }
