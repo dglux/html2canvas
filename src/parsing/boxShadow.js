@@ -5,9 +5,9 @@ const BOX_SHADOW_VALUES = /(inset)|(-?\d+px)|(#.+)|(rgb\(.+\))|(rgba\(.+\))/g;
 
 function parseBoxShadows(container) {
   const boxShadow = container.css("boxShadow");
-  var results = [];
+  const results = [];
 
-  if(boxShadow && boxShadow !== 'none') {
+  if (!!boxShadow && boxShadow !== "none") {
     var shadows = boxShadow.split(SHADOW_PROPERTY);
     for(var i = 0; shadows && (i < shadows.length); i++) {
       const s = shadows[i].match(BOX_SHADOW_VALUES);
@@ -36,6 +36,7 @@ function parseBoxShadows(container) {
       results.push(result);
     }
   }
+
   return results;
 };
 

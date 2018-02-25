@@ -15,7 +15,7 @@
   "dependencies": {
     "base64-arraybuffer": ">= 0.1.0",
     "es6-map": "^0.1.5",
-    "es6-promise": "^2.0.1"
+    "es6-promises": "^1.0.10"
   },
   "repository": {
     "type": "git",
