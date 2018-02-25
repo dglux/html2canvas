@@ -1,4 +1,4 @@
-var NodeContainer = require('./nodecontainer');
+const NodeContainer = require('./nodecontainer');
 
 class StackingContext extends NodeContainer {
   constructor(hasOwnStacking, opacity, element, parent) {

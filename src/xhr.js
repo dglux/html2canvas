@@ -1,24 +1,29 @@
-var { Promise } = require("./polyfill");
+const supportsFetch = typeof(window.fetch) === "function";
 
-function XHR(url) {
-  return new Promise(function(resolve, reject) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url);
+if (supportsFetch) {
+  module.exports = (url) => fetch(url).then(res => res.text());
+} else {
+  const { Promise } = require("./polyfill");
 
-    xhr.onload = function() {
-      if(xhr.status === 200) {
+  module.exports = (url) => new Promise((resolve, reject) => {
+    if (typeof(window.fetch) === "function") {
+      return 
+    }
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+  
+    xhr.onload = () => {
+      if (xhr.status === 200) {
         resolve(xhr.responseText);
       } else {
         reject(new Error(xhr.statusText));
       }
     };
-
-    xhr.onerror = function() {
-      reject(new Error("Network Error"));
+  
+    xhr.onerror = (err) => {
+      reject(err);
     };
-
+  
     xhr.send();
-  });
+  });  
 }
-
-module.exports = XHR;

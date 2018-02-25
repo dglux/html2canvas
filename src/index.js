@@ -1,7 +1,7 @@
 var { Promise } = require("./polyfill");
 var Support = require('./support');
 var CanvasRenderer = require('./renderer/CanvasRenderer');
-var ImageLoader = require('./imageloader');
+var ImageLoader = require('./ImageLoader');
 var NodeParser = require('./nodeparser');
 var NodeContainer = require('./nodecontainer');
 var BoundingBox = require('./BoundingBox');

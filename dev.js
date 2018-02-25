@@ -31,7 +31,7 @@ function bundle() {
 
   instance.bundle()
     .on("error", err => {
-      console.log(err.message);
+      console.log(err);
     })
     .pipe(fs.createWriteStream("./dist/html2canvas.js"));
 }

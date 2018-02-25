@@ -1,4 +1,22 @@
-var BoundingBox = require('./BoundingBox');
+const BoundingBox = require("./BoundingBox");
+const { Promise } = require("./polyfill");
+
+exports.Completer = class Completer {
+  constructor() {
+    this.promise = new Promise((resolve, reject) => {
+      this._resolve = resolve;
+      this._reject = reject; 
+    });
+  }
+
+  resolve(val) {
+    this._resolve(val);
+  }
+
+  reject(err) {
+    this._reject(err);
+  }
+}
 
 exports.smallImage = function smallImage() {
   return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
@@ -19,8 +37,6 @@ exports.bind = function(callback, context) {
     return callback.apply(context, arguments);
   };
 };
-
-exports.decode64 = require('base64-arraybuffer').decode;
 
 exports.getBounds = function(node) {
   if(node.getBoundingClientRect) {

@@ -1,7 +1,7 @@
 const { Map } = require("../polyfill");
 const Renderer = require("./Renderer");
-const LinearGradientContainer = require("../gradient/LinearGradientContainer");
-const RadialGradientContainer = require("../gradient/RadialGradientContainer");
+const LinearGradientContainer = require("../image/gradient/LinearGradientContainer");
+const RadialGradientContainer = require("../image/gradient/RadialGradientContainer");
 const log = require("../log");
 
 const { Clip } = require("../bounds");
@@ -421,11 +421,12 @@ class CanvasRenderer extends Renderer {
   resizeImage(imageContainer, size) {
     var image = imageContainer.image;
 
-    var ctx,
-      canvas = document.createElement("canvas");
+    const canvas = document.createElement("canvas");
     canvas.width = size.width * this.scale;
     canvas.height = size.height * this.scale;
-    ctx = canvas.getContext("2d");
+    
+    const ctx = canvas.getContext("2d");
+
     ctx.drawImage(
       image,
       0,
@@ -437,6 +438,7 @@ class CanvasRenderer extends Renderer {
       size.width * this.scale,
       size.height * this.scale
     );
+
     return canvas;
   }
 }

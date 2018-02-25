@@ -1,7 +1,7 @@
-var Color = require('../color');
-var log = require('../log');
-var XHR = require('../xhr');
-var BoundingBox = require('../BoundingBox');
+var Color = require('../../color');
+var log = require('../../log');
+var XHR = require('../../xhr');
+var BoundingBox = require('../../BoundingBox');
 
 /*
  target: canvas element or the id of a canvas element
