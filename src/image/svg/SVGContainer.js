@@ -1,5 +1,5 @@
 const { Promise } = require("../../polyfill");
-const { Completer } = require("../../utils");
+const { promiseDeferred } = require("../../utils");
 const BoundingBox = require("../../BoundingBox");
 const XHR = require("../../xhr");
 
@@ -21,12 +21,13 @@ module.exports = class SVGContainer extends BaseImageContainer {
     this.bb = null;
 
     this.promise = (isInline(src) ? Promise.resolve(inlineFormatting(src)) : XHR(src))
-        .then(svg => this.completePromise(renderObj));
+        .then(svg => this.completePromise(svg));
   }
 
   static fromNode(node, options) {
     const self = Object.create(SVGContainer.prototype);
 
+    self.isFromNode = true;
     self.src = node;
 
     self.isScaled = true;
@@ -37,7 +38,7 @@ module.exports = class SVGContainer extends BaseImageContainer {
     // set inside promise
     self.bb = null;
 
-    self.promise = self.completePromise(node);
+    self.promise = self.completePromise.call(self, node);
 
     return self;
   }
@@ -45,7 +46,7 @@ module.exports = class SVGContainer extends BaseImageContainer {
   // first pass is to get bounding box only
   // second pass is to render w/ scale
   completePromise(renderObj) {
-    const completer = new Completer();
+    const deferred = promiseDeferred();
 
     // dummy canvas for first pass
     const canvas = document.createElement("canvas");
@@ -54,9 +55,6 @@ module.exports = class SVGContainer extends BaseImageContainer {
       renderCallback: obj => {
         this.bb = obj.bounds;
 
-        this.image.style.width = this.bb.width + "px";
-        this.image.style.height = this.bb.height + "px";
-
         this.image.width = this.bb.width * this.scale;
         this.image.height = this.bb.height * this.scale;
 
@@ -64,13 +62,13 @@ module.exports = class SVGContainer extends BaseImageContainer {
           ignoreDimensions: true,
           scale: this.scale,
           renderCallback: obj => {
-            completer.resolve();
+            deferred.resolve(this.image);
           }
         });
       }
     });
 
-    return completer.promise;
+    return deferred;
   }
 
   getBounds(bounds) {

@@ -1,4 +1,5 @@
 const { Promise } = require("./polyfill");
+const { promiseTimeout } = require("./utils");
 const log = require("./log");
 
 const ImageContainer = require("./image/ImageContainer");
@@ -110,14 +111,19 @@ module.exports = class ImageLoader {
     return link.protocol + link.hostname + link.port;
   }
   
-  getPromise(container) {
-    return this.timeout(container, this.options.imageTimeout)["catch"](() => {
-      const dummy = new DummyImageContainer(container.src);
-      return dummy.promise.then(image => {
-        container.image = image;
-      });
-    });
-  };
+  waitForImage(container) {
+    return promiseTimeout(container.promise, this.options.imageTimeout)
+        .catch(err => {
+          if (err === this.options.imageTimeout) {
+            log("Timed out loading image", container);
+          }
+
+          const dummy = new DummyImageContainer(container.src);
+          return dummy.promise.then(image => {
+            container.image = image;
+          });
+        });
+  }
   
   get(src) {
     let found = null;
@@ -142,43 +148,22 @@ module.exports = class ImageLoader {
       });
     });
 
-    this.ready = Promise.all(this.images.map(this.getPromise.bind(this)));
+    this.ready = Promise.all(this.images.map(this.waitForImage.bind(this)));
     log("Finished searching images");
   
     this.ready.then(() => {
       console.groupCollapsed(log.getFormat([`Finished loading images, success: ${successCount}, failed: ${failureCount}`]).join(' '));
   
-      let i = 0, length = Object.keys(logQueue).length;
-      for(; i < length; i++) {
-        const arr = logQueue[(i + 1).toString()];
-        console.info(arr[0], arr[1]);
-      }
-  
+      // TODO: make them sort numerically
+      const keys = Object.keys(logQueue).sort();
+      keys.forEach(key => {
+        const [message, image] = logQueue[key];
+        console.info(message, image);
+      });
+
       console.groupEnd();
     });
   
     return this;
-  }
-  
-  timeout(container, timeout) {
-    let timer;
-    const promise = Promise.race(
-      [
-        container.promise,
-        new Promise((res, reject) => {
-          timer = setTimeout(() => {
-            log("Timed out loading image", container);
-            reject(container);
-          }, timeout);
-        })
-      ])
-      .then(container => {
-        clearTimeout(timer);
-        return container;
-      });
-    
-    promise["catch"](() => clearTimeout(timer));
-
-    return promise;
   }
 }

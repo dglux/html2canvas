@@ -1,14 +1,16 @@
-const supportsFetch = typeof(window.fetch) === "function";
+const supportsFetch = window.fetch !== undefined;
 
 if (supportsFetch) {
-  module.exports = (url) => fetch(url).then(res => res.text());
+  module.exports = (url) => fetch(url, {credentials: "same-origin" }).then(res => {
+    if (!res.ok) {
+      throw new Error(res.statusText);
+    }
+    return res.text();
+  });
 } else {
   const { Promise } = require("./polyfill");
 
   module.exports = (url) => new Promise((resolve, reject) => {
-    if (typeof(window.fetch) === "function") {
-      return 
-    }
     const xhr = new XMLHttpRequest();
     xhr.open("GET", url);
   

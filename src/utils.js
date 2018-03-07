@@ -1,22 +1,38 @@
 const BoundingBox = require("./BoundingBox");
 const { Promise } = require("./polyfill");
 
-exports.Completer = class Completer {
-  constructor() {
-    this.promise = new Promise((resolve, reject) => {
-      this._resolve = resolve;
-      this._reject = reject; 
-    });
-  }
+exports.promiseDeferred = () => {
+  let _resolve;
+  let _reject;
 
-  resolve(val) {
-    this._resolve(val);
-  }
+  const promise = new Promise((resolve, reject) => {
+    _resolve = resolve;
+    _reject = reject; 
+  });
 
-  reject(err) {
-    this._reject(err);
-  }
-}
+  Object.assign(promise, {
+    resolve(val) {
+      _resolve(val);
+    },
+    reject(err) {
+      _reject(err);
+    }
+  });
+
+  return promise;
+};
+
+exports.promiseTimeout = (promise, duration) => {
+  const deferred = exports.promiseDeferred();
+  const timer = setTimeout(deferred.reject, duration, duration);
+
+  promise.catch(() => clearTimeout(timer));
+
+  return Promise.race([deferred, promise]).then(val => {
+    clearTimeout(timer);
+    return val;
+  });
+};
 
 exports.smallImage = function smallImage() {
   return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";

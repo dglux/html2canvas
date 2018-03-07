@@ -2794,6 +2794,8 @@ module.exports = BoundingBox;
 },{}],68:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
+var ref$1 = _dh2cr_("./utils");
+var promiseTimeout = ref$1.promiseTimeout;
 var log = _dh2cr_("./log");
 
 var ImageContainer = _dh2cr_("./image/ImageContainer");
@@ -2805,8 +2807,8 @@ var LinearGradientContainer = _dh2cr_("./image/gradient/LinearGradientContainer"
 var RadialGradientContainer = _dh2cr_("./image/gradient/RadialGradientContainer");
 var GradientContainer = _dh2cr_("./image/gradient/GradientContainer");
 
-var ref$1 = _dh2cr_("./image/svg/utils");
-var isSVG = ref$1.isSVG;
+var ref$2 = _dh2cr_("./image/svg/utils");
+var isSVG = ref$2.isSVG;
 
 function hasImageBackground(imageData) {
   return imageData.method !== "none";
@@ -2908,14 +2910,21 @@ module.exports = (function () {
     return link.protocol + link.hostname + link.port;
   };
   
-  ImageLoader.prototype.getPromise = function getPromise (container) {
-    return this.timeout(container, this.options.imageTimeout)["catch"](function () {
-      var dummy = new DummyImageContainer(container.src);
-      return dummy.promise.then(function (image) {
-        container.image = image;
-      });
-    });
-  };;
+  ImageLoader.prototype.waitForImage = function waitForImage (container) {
+    var this$1 = this;
+
+    return promiseTimeout(container.promise, this.options.imageTimeout)
+        .catch(function (err) {
+          if (err === this$1.options.imageTimeout) {
+            log("Timed out loading image", container);
+          }
+
+          var dummy = new DummyImageContainer(container.src);
+          return dummy.promise.then(function (image) {
+            container.image = image;
+          });
+        });
+  };
   
   ImageLoader.prototype.get = function get (src) {
     var found = null;
@@ -2940,50 +2949,31 @@ module.exports = (function () {
       });
     });
 
-    this.ready = Promise.all(this.images.map(this.getPromise.bind(this)));
+    this.ready = Promise.all(this.images.map(this.waitForImage.bind(this)));
     log("Finished searching images");
   
     this.ready.then(function () {
       console.groupCollapsed(log.getFormat([("Finished loading images, success: " + successCount + ", failed: " + failureCount)]).join(' '));
   
-      var i = 0, length = Object.keys(logQueue).length;
-      for(; i < length; i++) {
-        var arr = logQueue[(i + 1).toString()];
-        console.info(arr[0], arr[1]);
-      }
-  
+      // TODO: make them sort numerically
+      var keys = Object.keys(logQueue).sort();
+      keys.forEach(function (key) {
+        var ref = logQueue[key];
+        var message = ref[0];
+        var image = ref[1];
+        console.info(message, image);
+      });
+
       console.groupEnd();
     });
   
     return this;
   };
-  
-  ImageLoader.prototype.timeout = function timeout (container, timeout$1) {
-    var timer;
-    var promise = Promise.race(
-      [
-        container.promise,
-        new Promise(function (res, reject) {
-          timer = setTimeout(function () {
-            log("Timed out loading image", container);
-            reject(container);
-          }, timeout$1);
-        })
-      ])
-      .then(function (container) {
-        clearTimeout(timer);
-        return container;
-      });
-    
-    promise["catch"](function () { return clearTimeout(timer); });
-
-    return promise;
-  };
 
   return ImageLoader;
 }())
 
-},{"./image/DummyImageContainer":76,"./image/FrameContainer":77,"./image/ImageContainer":78,"./image/gradient/GradientContainer":79,"./image/gradient/LinearGradientContainer":80,"./image/gradient/RadialGradientContainer":81,"./image/svg/SVGContainer":82,"./image/svg/utils":84,"./log":86,"./polyfill":91}],69:[function(_dh2cr_,module,exports){
+},{"./image/DummyImageContainer":76,"./image/FrameContainer":77,"./image/ImageContainer":78,"./image/gradient/GradientContainer":79,"./image/gradient/LinearGradientContainer":80,"./image/gradient/RadialGradientContainer":81,"./image/svg/SVGContainer":82,"./image/svg/utils":84,"./log":86,"./polyfill":91,"./utils":97}],69:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 var StackingContext = (function (NodeContainer) {
@@ -3505,30 +3495,15 @@ var BaseImageContainer = _dh2cr_("./BaseImageContainer");
 
 module.exports = (function (BaseImageContainer) {
   function DummyImageContainer(src) {
+    var this$1 = this;
+
     this.src = src;
     this.isScaled = false;
 
-    this._promise;
-    this._image;
-  }
-
-  if ( BaseImageContainer ) DummyImageContainer.__proto__ = BaseImageContainer;
-  DummyImageContainer.prototype = Object.create( BaseImageContainer && BaseImageContainer.prototype );
-  DummyImageContainer.prototype.constructor = DummyImageContainer;
-
-  var prototypeAccessors = { image: { configurable: true },promise: { configurable: true } };
-
-  prototypeAccessors.image.get = function () {
-    return this._image || (this._image = new Image());
-  };
-
-  prototypeAccessors.promise.get = function () {
-    if (this._promise) {
-      return this._promise;
-    }
-
-    var image = this.image;
-    return this._promise = new Promise(function (resolve, reject) {
+    this.image = new Image();
+    this.promise = new Promise(function (resolve, reject) {
+      var ref = this$1;
+      var image = ref.image;
       image.onload = resolve;
       image.onerror = reject;
       image.src = smallImage();
@@ -3536,9 +3511,11 @@ module.exports = (function (BaseImageContainer) {
         resolve(image);
       }
     });
-  };
+  }
 
-  Object.defineProperties( DummyImageContainer.prototype, prototypeAccessors );
+  if ( BaseImageContainer ) DummyImageContainer.__proto__ = BaseImageContainer;
+  DummyImageContainer.prototype = Object.create( BaseImageContainer && BaseImageContainer.prototype );
+  DummyImageContainer.prototype.constructor = DummyImageContainer;
 
   return DummyImageContainer;
 }(BaseImageContainer))
@@ -3966,7 +3943,7 @@ module.exports = (function (GradientContainer) {
 var ref = _dh2cr_("../../polyfill");
 var Promise = ref.Promise;
 var ref$1 = _dh2cr_("../../utils");
-var Completer = ref$1.Completer;
+var promiseDeferred = ref$1.promiseDeferred;
 var BoundingBox = _dh2cr_("../../BoundingBox");
 var XHR = _dh2cr_("../../xhr");
 
@@ -3992,7 +3969,7 @@ module.exports = (function (BaseImageContainer) {
     this.bb = null;
 
     this.promise = (isInline(src) ? Promise.resolve(inlineFormatting(src)) : XHR(src))
-        .then(function (svg) { return this$1.completePromise(renderObj); });
+        .then(function (svg) { return this$1.completePromise(svg); });
   }
 
   if ( BaseImageContainer ) SVGContainer.__proto__ = BaseImageContainer;
@@ -4002,6 +3979,7 @@ module.exports = (function (BaseImageContainer) {
   SVGContainer.fromNode = function fromNode (node, options) {
     var self = Object.create(SVGContainer.prototype);
 
+    self.isFromNode = true;
     self.src = node;
 
     self.isScaled = true;
@@ -4012,7 +3990,7 @@ module.exports = (function (BaseImageContainer) {
     // set inside promise
     self.bb = null;
 
-    self.promise = self.completePromise(node);
+    self.promise = self.completePromise.call(self, node);
 
     return self;
   };
@@ -4022,7 +4000,7 @@ module.exports = (function (BaseImageContainer) {
   SVGContainer.prototype.completePromise = function completePromise (renderObj) {
     var this$1 = this;
 
-    var completer = new Completer();
+    var deferred = promiseDeferred();
 
     // dummy canvas for first pass
     var canvas = document.createElement("canvas");
@@ -4031,9 +4009,6 @@ module.exports = (function (BaseImageContainer) {
       renderCallback: function (obj) {
         this$1.bb = obj.bounds;
 
-        this$1.image.style.width = this$1.bb.width + "px";
-        this$1.image.style.height = this$1.bb.height + "px";
-
         this$1.image.width = this$1.bb.width * this$1.scale;
         this$1.image.height = this$1.bb.height * this$1.scale;
 
@@ -4041,13 +4016,13 @@ module.exports = (function (BaseImageContainer) {
           ignoreDimensions: true,
           scale: this$1.scale,
           renderCallback: function (obj) {
-            completer.resolve();
+            deferred.resolve(this$1.image);
           }
         });
       }
     });
 
-    return completer.promise;
+    return deferred;
   };
 
   SVGContainer.prototype.getBounds = function getBounds (bounds) {
@@ -7140,10 +7115,12 @@ function build(opts) {
         if(e.style('width').hasValue()) {
           ctx.canvas.width = e.style('width').toPixels('x');
           ctx.canvas.style.width = ctx.canvas.width + 'px';
+          svg.CanvasBoundingBox.expand(new svg.BoundingBox(0, 0, ctx.canvas.width, 0));
         }
         if(e.style('height').hasValue()) {
           ctx.canvas.height = e.style('height').toPixels('y');
           ctx.canvas.style.height = ctx.canvas.height + 'px';
+          svg.CanvasBoundingBox.expand(new svg.BoundingBox(0, 0, 0, ctx.canvas.height));
         }
       }
       var cWidth = ctx.canvas.clientWidth || ctx.canvas.width / (svg.opts.scale || 1);
@@ -8249,7 +8226,7 @@ NodeParser.prototype.getRangeBounds = function(node, offset, length) {
 };
 
 NodeParser.FLAGS = {
-  CLEAR_TRANSFORM: "CLEAR_TRANSFORM"
+  POP_STACKING_CONTEXT: "POP_STACKING_CONTEXT"
 };
 
 NodeParser.prototype.parse = function(stack) {
@@ -8268,15 +8245,15 @@ NodeParser.prototype.parse = function(stack) {
       this.renderQueue.push(container);
       if(isStackingContext(container)) {
         this.parse(container);
-        this.renderQueue.push(NodeParser.FLAGS.CLEAR_TRANSFORM);
+        this.renderQueue.push(NodeParser.FLAGS.POP_STACKING_CONTEXT);
       }
     }, this);
 };
 
 NodeParser.prototype.paint = function(container) {
   try {
-    if (container === NodeParser.FLAGS.CLEAR_TRANSFORM) {
-      this.renderer.popTransform();
+    if (container === NodeParser.FLAGS.POP_STACKING_CONTEXT) {
+      this.renderer.popStackingContext();
     } else if (isTextNode(container)) {
       if (isPseudoElement(container.parent)) {
         container.parent.appendToDOM();
@@ -8298,8 +8275,7 @@ NodeParser.prototype.paint = function(container) {
 
 NodeParser.prototype.paintNode = function(container) {
   if(isStackingContext(container)) {
-    this.renderer.setOpacity(container.opacity);
-    this.renderer.pushTransform(container.parseTransform());
+    this.renderer.pushStackingContext(container.parseTransform(), container.opacity);
   }
 
   if (container.node.nodeName === "INPUT" && container.node.type === "checkbox") {
@@ -9227,6 +9203,8 @@ var CanvasRenderer = (function (Renderer) {
     }
 
     this.ctx = this.canvas.getContext("2d");
+    this.ctx.globalAlpha = 1;
+
     this.taintCtx = document.createElement("canvas").getContext("2d");
 
     this.ctx.scale(this.scale, this.scale);
@@ -9234,7 +9212,7 @@ var CanvasRenderer = (function (Renderer) {
 
     this.variables = new Map();
 
-    this.transforms = new Map();
+    this.stackingContexts = new Map();
     this.filterScale = 1 / this.scale;
     this.stackDepth = 1;
 
@@ -9432,34 +9410,36 @@ var CanvasRenderer = (function (Renderer) {
     this.clearShadow();    
   };
 
-  CanvasRenderer.prototype.setOpacity = function setOpacity (opacity) {
-    this.ctx.globalAlpha = opacity;
-  };
-
   CanvasRenderer.prototype.setTransform = function setTransform (transform) {
     this.ctx.translate(transform.origin[0], transform.origin[1]);
     this.ctx.transform.apply(this.ctx, transform.matrix);
     this.ctx.translate(-transform.origin[0], -transform.origin[1]);
   };
 
-  CanvasRenderer.prototype.pushTransform = function pushTransform (transform) {
+  CanvasRenderer.prototype.pushStackingContext = function pushStackingContext (transform, opacity) {
     this.save();
 
     this.stackDepth++;
 
+    this.ctx.globalAlpha *= opacity;
+
     this.filterScale *= (transform.matrix[0] + transform.matrix[3]) / 2;
-    this.transforms.set(this.stackDepth, transform);
+    this.stackingContexts.set(this.stackDepth, { transform: transform, opacity: opacity });
 
     this.setTransform(transform);
   };
 
-  CanvasRenderer.prototype.popTransform = function popTransform () {
-    if (this.transforms.has(this.stackDepth)) {
-      var transform = this.transforms.get(this.stackDepth);
+  CanvasRenderer.prototype.popStackingContext = function popStackingContext () {
+    if (this.stackingContexts.has(this.stackDepth)) {
+      var ref = this.stackingContexts.get(this.stackDepth);
+      var transform = ref.transform;
+      var opacity = ref.opacity;
+
       this.filterScale /= (transform.matrix[0] + transform.matrix[3]) / 2;
+      this.ctx.globalAlpha /= opacity;
     }
 
-    this.transforms.delete(this.stackDepth);
+    this.stackingContexts.delete(this.stackDepth);
     this.stackDepth--;
 
     this.restore();
@@ -9838,26 +9818,38 @@ var BoundingBox = _dh2cr_("./BoundingBox");
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 
-exports.Completer = (function () {
-  function Completer() {
-  var this$1 = this;
+exports.promiseDeferred = function () {
+  var _resolve;
+  var _reject;
 
-    this.promise = new Promise(function (resolve, reject) {
-      this$1._resolve = resolve;
-      this$1._reject = reject; 
-    });
-  }
+  var promise = new Promise(function (resolve, reject) {
+    _resolve = resolve;
+    _reject = reject; 
+  });
 
-  Completer.prototype.resolve = function resolve (val) {
-    this._resolve(val);
-  };
+  Object.assign(promise, {
+    resolve: function resolve(val) {
+      _resolve(val);
+    },
+    reject: function reject(err) {
+      _reject(err);
+    }
+  });
 
-  Completer.prototype.reject = function reject (err) {
-    this._reject(err);
-  };
+  return promise;
+};
 
-  return Completer;
-}())
+exports.promiseTimeout = function (promise, duration) {
+  var deferred = exports.promiseDeferred();
+  var timer = setTimeout(deferred.reject, duration, duration);
+
+  promise.catch(function () { return clearTimeout(timer); });
+
+  return Promise.race([deferred, promise]).then(function (val) {
+    clearTimeout(timer);
+    return val;
+  });
+};
 
 exports.smallImage = function smallImage() {
   return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
@@ -10043,18 +10035,20 @@ exports.parseBackgrounds = function(backgroundImage) {
 };
 
 },{"./BoundingBox":67,"./polyfill":91}],98:[function(_dh2cr_,module,exports){
-var supportsFetch = typeof(window.fetch) === "function";
+var supportsFetch = window.fetch !== undefined;
 
 if (supportsFetch) {
-  module.exports = function (url) { return fetch(url).then(function (res) { return res.text(); }); };
+  module.exports = function (url) { return fetch(url, {credentials: "same-origin" }).then(function (res) {
+    if (!res.ok) {
+      throw new Error(res.statusText);
+    }
+    return res.text();
+  }); };
 } else {
   var ref = _dh2cr_("./polyfill");
   var Promise = ref.Promise;
 
   module.exports = function (url) { return new Promise(function (resolve, reject) {
-    if (typeof(window.fetch) === "function") {
-      return 
-    }
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url);
   

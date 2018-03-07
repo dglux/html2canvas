@@ -18,7 +18,7 @@ class CanvasRenderer extends Renderer {
 
   variables: Map<string, object>;
 
-  transforms: Map<int, object>;
+  stackingContexts: Map<int, object>;
   filterScale: num;
   stackDepth: int;
   */
@@ -37,6 +37,8 @@ class CanvasRenderer extends Renderer {
     }
 
     this.ctx = this.canvas.getContext("2d");
+    this.ctx.globalAlpha = 1;
+
     this.taintCtx = document.createElement("canvas").getContext("2d");
 
     this.ctx.scale(this.scale, this.scale);
@@ -44,7 +46,7 @@ class CanvasRenderer extends Renderer {
 
     this.variables = new Map();
 
-    this.transforms = new Map();
+    this.stackingContexts = new Map();
     this.filterScale = 1 / this.scale;
     this.stackDepth = 1;
 
@@ -236,34 +238,34 @@ class CanvasRenderer extends Renderer {
     this.clearShadow();    
   }
 
-  setOpacity(opacity) {
-    this.ctx.globalAlpha = opacity;
-  }
-
   setTransform(transform) {
     this.ctx.translate(transform.origin[0], transform.origin[1]);
     this.ctx.transform.apply(this.ctx, transform.matrix);
     this.ctx.translate(-transform.origin[0], -transform.origin[1]);
   }
 
-  pushTransform(transform) {
+  pushStackingContext(transform, opacity) {
     this.save();
 
     this.stackDepth++;
 
+    this.ctx.globalAlpha *= opacity;
+
     this.filterScale *= (transform.matrix[0] + transform.matrix[3]) / 2;
-    this.transforms.set(this.stackDepth, transform);
+    this.stackingContexts.set(this.stackDepth, { transform, opacity });
 
     this.setTransform(transform);
   }
 
-  popTransform() {
-    if (this.transforms.has(this.stackDepth)) {
-      const transform = this.transforms.get(this.stackDepth);
+  popStackingContext() {
+    if (this.stackingContexts.has(this.stackDepth)) {
+      const { transform, opacity } = this.stackingContexts.get(this.stackDepth);
+
       this.filterScale /= (transform.matrix[0] + transform.matrix[3]) / 2;
+      this.ctx.globalAlpha /= opacity;
     }
 
-    this.transforms.delete(this.stackDepth);
+    this.stackingContexts.delete(this.stackDepth);
     this.stackDepth--;
 
     this.restore();

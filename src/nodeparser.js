@@ -283,7 +283,7 @@ NodeParser.prototype.getRangeBounds = function(node, offset, length) {
 };
 
 NodeParser.FLAGS = {
-  CLEAR_TRANSFORM: "CLEAR_TRANSFORM"
+  POP_STACKING_CONTEXT: "POP_STACKING_CONTEXT"
 };
 
 NodeParser.prototype.parse = function(stack) {
@@ -302,15 +302,15 @@ NodeParser.prototype.parse = function(stack) {
       this.renderQueue.push(container);
       if(isStackingContext(container)) {
         this.parse(container);
-        this.renderQueue.push(NodeParser.FLAGS.CLEAR_TRANSFORM);
+        this.renderQueue.push(NodeParser.FLAGS.POP_STACKING_CONTEXT);
       }
     }, this);
 };
 
 NodeParser.prototype.paint = function(container) {
   try {
-    if (container === NodeParser.FLAGS.CLEAR_TRANSFORM) {
-      this.renderer.popTransform();
+    if (container === NodeParser.FLAGS.POP_STACKING_CONTEXT) {
+      this.renderer.popStackingContext();
     } else if (isTextNode(container)) {
       if (isPseudoElement(container.parent)) {
         container.parent.appendToDOM();
@@ -332,8 +332,7 @@ NodeParser.prototype.paint = function(container) {
 
 NodeParser.prototype.paintNode = function(container) {
   if(isStackingContext(container)) {
-    this.renderer.setOpacity(container.opacity);
-    this.renderer.pushTransform(container.parseTransform());
+    this.renderer.pushStackingContext(container.parseTransform(), container.opacity);
   }
 
   if (container.node.nodeName === "INPUT" && container.node.type === "checkbox") {
