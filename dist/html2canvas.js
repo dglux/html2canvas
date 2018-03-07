@@ -2792,6 +2792,24 @@ BoundingBox.prototype.clone = function() {
 module.exports = BoundingBox;
 
 },{}],68:[function(_dh2cr_,module,exports){
+var Clip = function Clip(shapes, transform, parent) {
+  this.shapes = shapes || [];
+  this.transform = transform;
+  this.parent = parent;
+};
+
+Clip.prototype.addShape = function addShape (shape) {
+  this.shapes.push(shape);
+  return this;
+};
+
+Clip.prototype.clone = function clone () {
+  return new Clip([].concat( this.shapes ), this.transform, this.parent);
+};
+
+module.exports = Clip;
+
+},{}],69:[function(_dh2cr_,module,exports){
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
 var ref$1 = _dh2cr_("./utils");
@@ -2973,7 +2991,7 @@ module.exports = (function () {
   return ImageLoader;
 }())
 
-},{"./image/DummyImageContainer":76,"./image/FrameContainer":77,"./image/ImageContainer":78,"./image/gradient/GradientContainer":79,"./image/gradient/LinearGradientContainer":80,"./image/gradient/RadialGradientContainer":81,"./image/svg/SVGContainer":82,"./image/svg/utils":84,"./log":86,"./polyfill":91,"./utils":97}],69:[function(_dh2cr_,module,exports){
+},{"./image/DummyImageContainer":76,"./image/FrameContainer":77,"./image/ImageContainer":78,"./image/gradient/GradientContainer":79,"./image/gradient/LinearGradientContainer":80,"./image/gradient/RadialGradientContainer":81,"./image/svg/SVGContainer":82,"./image/svg/utils":84,"./log":86,"./polyfill":91,"./utils":97}],70:[function(_dh2cr_,module,exports){
 var NodeContainer = _dh2cr_('./nodecontainer');
 
 var StackingContext = (function (NodeContainer) {
@@ -3002,27 +3020,7 @@ var StackingContext = (function (NodeContainer) {
 
 module.exports = StackingContext;
 
-},{"./nodecontainer":87}],70:[function(_dh2cr_,module,exports){
-var Clip = function Clip(shapes, transform, parent) {
-  this.shapes = shapes || [];
-  this.transform = transform;
-  this.parent = parent;
-};
-
-Clip.prototype.addShape = function addShape (shape) {
-  this.shapes.push(shape);
-  return this;
-};
-
-Clip.prototype.clone = function clone () {
-  return new Clip([].concat( this.shapes ), this.transform, this.parent);
-};
-
-module.exports = {
-  Clip: Clip
-};
-
-},{}],71:[function(_dh2cr_,module,exports){
+},{"./nodecontainer":87}],71:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('./log');
 var ref = _dh2cr_("./polyfill");
 var Promise = ref.Promise;
@@ -3476,7 +3474,6 @@ module.exports = FontMetrics;
 module.exports = (function () {
   function BaseImageContainer() {
     this.src; // string
-    !this.isScaled; // boolean, default false
     !this.tainted; // boolean, default false
     this.promise; // Promise<Image>
     this.image; // Image
@@ -3498,7 +3495,6 @@ module.exports = (function (BaseImageContainer) {
     var this$1 = this;
 
     this.src = src;
-    this.isScaled = false;
 
     this.image = new Image();
     this.promise = new Promise(function (resolve, reject) {
@@ -3533,7 +3529,6 @@ module.exports = (function (BaseImageContainer) {
 
     this.image = null;
     this.src = container;
-    this.isScaled = false;
 
     var bounds = container.parseBounds();
     this.promise = new Promise(function (resolve, reject) {
@@ -3582,8 +3577,6 @@ module.exports = (function (BaseImageContainer) {
     this.src = src;
     this.image = new Image();
 
-    this.isScaled = false;
-
     this.tainted = null;
     this.promise = new Promise(function (resolve, reject) {
       this$1.image.onload = resolve;
@@ -3624,7 +3617,6 @@ module.exports = (function (BaseImageContainer) {
     bounds = bounds || container.parseBounds();
 
     this.src = JSON.stringify([imageData.value, bounds]);
-    this.isScaled = false;
 
     this.colorStops = [];
 
@@ -3960,7 +3952,6 @@ module.exports = (function (BaseImageContainer) {
 
     this.src = src;
 
-    this.isScaled = true;
     this.scale = devicePixelRatio * (options.scale || 1);
     
     this.image = document.createElement("canvas");
@@ -3982,7 +3973,6 @@ module.exports = (function (BaseImageContainer) {
     self.isFromNode = true;
     self.src = node;
 
-    self.isScaled = true;
     self.scale = devicePixelRatio * (options.scale || 1);
 
     self.image = document.createElement("canvas");
@@ -7621,7 +7611,7 @@ module.exports = (typeof(document) === "undefined" || typeof(Object.create) !== 
   return Promise.reject("No canvas support");
 } : html2canvas;
 
-},{"./BoundingBox":67,"./ImageLoader":68,"./clone":71,"./log":86,"./nodecontainer":87,"./nodeparser":88,"./polyfill":91,"./renderer/CanvasRenderer":93,"./support":95,"./utils":97}],86:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./ImageLoader":69,"./clone":71,"./log":86,"./nodecontainer":87,"./nodeparser":88,"./polyfill":91,"./renderer/CanvasRenderer":93,"./support":95,"./utils":97}],86:[function(_dh2cr_,module,exports){
 var getFormat = function (args) { return [
     (((Date.now() - window.html2canvas.start)) + "ms"),
     'html2canvas:'
@@ -7641,18 +7631,17 @@ module.exports.getFormat = getFormat;
 var Color = _dh2cr_("./color");
 var BoundingBox = _dh2cr_("./BoundingBox");
 
-var ref = _dh2cr_("./bounds");
-var Clip = ref.Clip;
-var ref$1 = _dh2cr_("./utils");
-var getBounds = ref$1.getBounds;
-var parseBackgrounds = ref$1.parseBackgrounds;
-var offsetBounds = ref$1.offsetBounds;
+var Clip = _dh2cr_("./Clip");
+var ref = _dh2cr_("./utils");
+var getBounds = ref.getBounds;
+var parseBackgrounds = ref.parseBackgrounds;
+var offsetBounds = ref.offsetBounds;
 
-var ref$2 = _dh2cr_("./parsing/transform");
-var parseTransform = ref$2.parseTransform;
-var parseTransformMatrix = ref$2.parseTransformMatrix;
-var ref$3 = _dh2cr_("./parsing/boxShadow");
-var parseBoxShadows = ref$3.parseBoxShadows;
+var ref$1 = _dh2cr_("./parsing/transform");
+var parseTransform = ref$1.parseTransform;
+var parseTransformMatrix = ref$1.parseTransformMatrix;
+var ref$2 = _dh2cr_("./parsing/boxShadow");
+var parseBoxShadows = ref$2.parseBoxShadows;
 
 function NodeContainer(node, parent) {
   this.node = node;
@@ -7936,7 +7925,7 @@ function isPercentage(value) {
 
 module.exports = NodeContainer;
 
-},{"./BoundingBox":67,"./bounds":70,"./color":72,"./parsing/boxShadow":89,"./parsing/transform":90,"./utils":97}],88:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./Clip":68,"./color":72,"./parsing/boxShadow":89,"./parsing/transform":90,"./utils":97}],88:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('./log');
 var punycode = _dh2cr_('punycode');
 var BoundingBox = _dh2cr_('./BoundingBox');
@@ -7953,8 +7942,7 @@ var bind = utils.bind;
 var getBounds = utils.getBounds;
 var parseBackgrounds = utils.parseBackgrounds;
 
-var ref$1 = _dh2cr_("./bounds");
-var Clip = ref$1.Clip;
+var Clip = _dh2cr_("./Clip");
 
 function NodeParser(element, renderer, support, imageLoader, options) {
   log("Starting NodeParser");
@@ -8956,7 +8944,7 @@ function hasUnicode(string) {
 
 module.exports = NodeParser;
 
-},{"./BoundingBox":67,"./StackingContext":69,"./bounds":70,"./color":72,"./fontmetrics":74,"./log":86,"./nodecontainer":87,"./polyfill":91,"./pseudoelementcontainer":92,"./textcontainer":96,"./utils":97,"punycode":65}],89:[function(_dh2cr_,module,exports){
+},{"./BoundingBox":67,"./Clip":68,"./StackingContext":70,"./color":72,"./fontmetrics":74,"./log":86,"./nodecontainer":87,"./polyfill":91,"./pseudoelementcontainer":92,"./textcontainer":96,"./utils":97,"punycode":65}],89:[function(_dh2cr_,module,exports){
 var Color = _dh2cr_("../color");
 
 var SHADOW_PROPERTY = /(?!\([0-9\s.]+),(?![0-9\s.,]+\))/g;
@@ -9182,11 +9170,10 @@ var LinearGradientContainer = _dh2cr_("../image/gradient/LinearGradientContainer
 var RadialGradientContainer = _dh2cr_("../image/gradient/RadialGradientContainer");
 var log = _dh2cr_("../log");
 
-var ref$1 = _dh2cr_("../bounds");
-var Clip = ref$1.Clip;
+var Clip = _dh2cr_("../Clip");
 
-var ref$2 = _dh2cr_("../parsing/transform");
-var identityTransform = ref$2.identityTransform;
+var ref$1 = _dh2cr_("../parsing/transform");
+var identityTransform = ref$1.identityTransform;
 
 var CanvasRenderer = (function (Renderer) {
   function CanvasRenderer(width, height, imageLoader, options) {
@@ -9625,7 +9612,7 @@ var CanvasRenderer = (function (Renderer) {
 
 module.exports = CanvasRenderer;
 
-},{"../bounds":70,"../image/gradient/LinearGradientContainer":80,"../image/gradient/RadialGradientContainer":81,"../log":86,"../parsing/transform":90,"../polyfill":91,"./Renderer":94}],94:[function(_dh2cr_,module,exports){
+},{"../Clip":68,"../image/gradient/LinearGradientContainer":80,"../image/gradient/RadialGradientContainer":81,"../log":86,"../parsing/transform":90,"../polyfill":91,"./Renderer":94}],94:[function(_dh2cr_,module,exports){
 var log = _dh2cr_('../log');
 
 function Renderer(width, height, images, options) {
