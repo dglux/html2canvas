@@ -12,7 +12,6 @@ module.exports = class SVGContainer extends BaseImageContainer {
   constructor(src, options) {
     this.src = src;
 
-    this.isScaled = true;
     this.scale = devicePixelRatio * (options.scale || 1);
     
     this.image = document.createElement("canvas");
@@ -30,7 +29,6 @@ module.exports = class SVGContainer extends BaseImageContainer {
     self.isFromNode = true;
     self.src = node;
 
-    self.isScaled = true;
     self.scale = devicePixelRatio * (options.scale || 1);
 
     self.image = document.createElement("canvas");

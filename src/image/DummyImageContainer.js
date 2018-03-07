@@ -6,7 +6,6 @@ const BaseImageContainer = require("./BaseImageContainer");
 module.exports = class DummyImageContainer extends BaseImageContainer {
   constructor(src) {
     this.src = src;
-    this.isScaled = false;
 
     this.image = new Image();
     this.promise = new Promise((resolve, reject) => {

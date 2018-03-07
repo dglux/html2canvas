@@ -4,7 +4,7 @@ const LinearGradientContainer = require("../image/gradient/LinearGradientContain
 const RadialGradientContainer = require("../image/gradient/RadialGradientContainer");
 const log = require("../log");
 
-const { Clip } = require("../bounds");
+const Clip = require("../Clip");
 
 const { identityTransform } = require("../parsing/transform");
 

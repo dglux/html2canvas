@@ -15,6 +15,4 @@ class Clip {
   }
 }
 
-module.exports = {
-  Clip
-};
+module.exports = Clip;

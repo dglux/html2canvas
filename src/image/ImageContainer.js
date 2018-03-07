@@ -7,8 +7,6 @@ module.exports = class ImageContainer extends BaseImageContainer {
     this.src = src;
     this.image = new Image();
 
-    this.isScaled = false;
-
     this.tainted = null;
     this.promise = new Promise((resolve, reject) => {
       this.image.onload = resolve;

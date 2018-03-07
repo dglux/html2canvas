@@ -13,7 +13,7 @@ var bind = utils.bind;
 var getBounds = utils.getBounds;
 var parseBackgrounds = utils.parseBackgrounds;
 
-const { Clip } = require("./bounds");
+const Clip = require("./Clip");
 
 function NodeParser(element, renderer, support, imageLoader, options) {
   log("Starting NodeParser");

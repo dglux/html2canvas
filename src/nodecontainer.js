@@ -1,7 +1,7 @@
 const Color = require("./color");
 const BoundingBox = require("./BoundingBox");
 
-const { Clip } = require("./bounds");
+const Clip = require("./Clip");
 const { getBounds, parseBackgrounds, offsetBounds } = require("./utils");
 
 const { parseTransform, parseTransformMatrix } = require("./parsing/transform");

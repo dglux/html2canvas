@@ -12,7 +12,6 @@ module.exports = class GradientContainer extends BaseImageContainer {
     bounds = bounds || container.parseBounds();
 
     this.src = JSON.stringify([imageData.value, bounds]);
-    this.isScaled = false;
 
     this.colorStops = [];
 

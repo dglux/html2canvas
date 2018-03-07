@@ -7,7 +7,6 @@ module.exports = class FrameContainer extends BaseImageContainer {
   constructor(container, options) {
     this.image = null;
     this.src = container;
-    this.isScaled = false;
 
     const bounds = container.parseBounds();
     this.promise = new Promise((resolve, reject) => {
