@@ -10,7 +10,8 @@ module.exports = class DummyImageContainer extends BaseImageContainer {
     this.image = new Image();
     this.promise = new Promise((resolve, reject) => {
       const { image } = this;
-      image.onload = resolve;
+      
+      image.onload = () => resolve(image);
       image.onerror = reject;
       image.src = smallImage();
       if (image.complete === true) {

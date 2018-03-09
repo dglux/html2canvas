@@ -2937,10 +2937,7 @@ module.exports = (function () {
             log("Timed out loading image", container);
           }
 
-          var dummy = new DummyImageContainer(container.src);
-          return dummy.promise.then(function (image) {
-            container.image = image;
-          });
+          return (new DummyImageContainer()).promise.then(function (image) { return (container.image = image); });
         });
   };
   
@@ -3500,7 +3497,8 @@ module.exports = (function (BaseImageContainer) {
     this.promise = new Promise(function (resolve, reject) {
       var ref = this$1;
       var image = ref.image;
-      image.onload = resolve;
+      
+      image.onload = function () { return resolve(image); };
       image.onerror = reject;
       image.src = smallImage();
       if (image.complete === true) {
@@ -8014,11 +8012,7 @@ NodeParser.prototype.calculateOverflowClips = function() {
         container.drawnBounds = this.parseDrawnBounds(container);
       }
 
-      var hasOverflowClip = container.css('overflow') === "hidden" ||
-        container.css('overflow') === "scroll" ||
-        (container.css('overflow') === "auto" &&
-          (container.node.scrollWidth >= container.node.clientWidth ||
-          container.node.scrollHeight >= container.node.clientHeight));
+      var hasOverflowClip = container.css('overflow') !== "visible";
 
       var clip = new Clip([], container.hasTransform() ? container.parseTransform() : null);
 
@@ -8058,7 +8052,7 @@ NodeParser.prototype.calculateOverflowClips = function() {
 };
 
 function hasParentClip(container) {
-  return container.parent && container.parent.clip.shapes.length;
+  return container.parent && container.parent.clip;
 }
 
 NodeParser.prototype.asyncRenderer = function(queue, resolve, asyncTimer) {
@@ -8343,24 +8337,14 @@ NodeParser.prototype.paintElement = function(container) {
     }
   }, this);
 
-  function drawSvg() {
-    var imgContainer = this.images.get(container.node);
-    if(imgContainer) {
-      this.renderer.renderImage(container, imgContainer.getBounds(bounds), container.borders, imgContainer);
+  this.renderer.clip(container.clip, function () {
+    var imgContainer = this$1.images.get(container.node);
+    if (imgContainer) {
+      this$1.renderer.renderImage(container, imgContainer.getBounds(bounds), container.borders, imgContainer);
     } else {
       log("Error loading <" + container.node.nodeName + ">", container.node);
     }
-  }
-
-  if(container.node.nodeName === 'svg') {
-    if(container.css('overflow') === 'visible') {
-      drawSvg.bind(this)();
-    } else {
-      this.renderer.clip(container.backgroundClip, function() {
-        drawSvg.bind(this)();
-      }, this);
-    }
-  }
+  });
 
   this.renderer.clip(container.backgroundClip, function() {
     switch(container.node.nodeName) {
@@ -8459,6 +8443,7 @@ NodeParser.prototype.paintFormValue = function(container) {
 
 NodeParser.prototype.paintText = function(container) {
   container.applyTextTransform();
+
   var characters = punycode.ucs2.decode(container.node.data);
   // character-by-character positioning if word-wrap: break-word
   var textListTest = container.parent.css('wordWrap') !== 'break-word' &&
@@ -8513,29 +8498,28 @@ NodeParser.prototype.renderTextDecoration = function(container, bounds, metrics)
   }
 };
 
-var borderColorTransforms = {
-  inset: [
-    ["darken", 0.60],
-    ["darken", 0.10],
-    ["darken", 0.10],
-    ["darken", 0.60]
-  ]
-};
+var INSET_BORDER_VALUES = [0.60, 0.10, 0.10, 0.60];
 
 NodeParser.prototype.parseBorders = function(container) {
   var nodeBounds = container.parseBounds();
-  var borders = ["Top", "Right", "Bottom", "Left"].map(function(side, index) {    
-    var style = container.css("border" + side + "Style");
-    var color = container.color('border' + side + 'Color');
+  var borders = ["Top", "Right", "Bottom", "Left"].map(function (side, index) {    
+    var style = container.css(("border" + side + "Style"));
+    var width = container.cssInt(("border" + side + "Width"));
 
-    if(style === "inset" && color.isBlack()) {
-      color = new Color([255, 255, 255, color.a]); // this is wrong, but
+    var color = container.color(("border" + side + "Color"));
+
+    if (style === "inset") {
+      // this is wrong, but...
+      if (color.isBlack()) {
+        color = new Color([255,255,255,color.a]);
+      }
+
+      color = color.darken(INSET_BORDER_VALUES[index]);
     }
-    
-    var colorTransform = borderColorTransforms[style] ? borderColorTransforms[style][index] : null;
+
     return {
-      width: container.cssInt('border' + side + 'Width'),
-      color: colorTransform ? color[colorTransform[0]](colorTransform[1]) : color,
+      width: width,
+      color: color,
       args: null
     };
   });
@@ -8649,7 +8633,6 @@ NodeParser.prototype.parseBackgroundClip = function(container, borderPoints, bor
         parseCorner(borderArgs, radius[2], radius[3], borderPoints.bottomRightInner, borderPoints.bottomLeftInner, bounds.x + bounds.width - borders[1].width, bounds.y + bounds.height - borders[2].width);
         parseCorner(borderArgs, radius[3], radius[0], borderPoints.bottomLeftInner, borderPoints.topLeftInner, bounds.x + borders[3].width, bounds.y + bounds.height - borders[2].width);
         break;
-
       default:
         parseCorner(borderArgs, radius[0], radius[1], borderPoints.topLeftOuter, borderPoints.topRightOuter, bounds.x, bounds.y);
         parseCorner(borderArgs, radius[1], radius[2], borderPoints.topRightOuter, borderPoints.bottomRightOuter, bounds.x + bounds.width, bounds.y);
@@ -8661,48 +8644,126 @@ NodeParser.prototype.parseBackgroundClip = function(container, borderPoints, bor
   return borderArgs;
 };
 
+var KAPPA = 4 * (Math.sqrt(2) - 1) / 3;
+
 function getCurvePoints(x, y, r1, r2) {
-  var kappa = 4 * ((Math.sqrt(2) - 1) / 3);
-  var ox = (r1) * kappa, // control point offset horizontal
-    oy = (r2) * kappa, // control point offset vertical
-    xm = x + r1, // x-middle
-    ym = y + r2; // y-middle
+  var ox = (r1) * KAPPA; // control point offset horizontal
+  var oy = (r2) * KAPPA; // control point offset vertical
+  var xm = x + r1; // x-middle
+  var ym = y + r2; // y-middle
+
   return {
-    topLeft: bezierCurve({x: x, y: ym}, {x: x, y: ym - oy}, {x: xm - ox, y: y}, {x: xm, y: y}),
-    topRight: bezierCurve({x: x, y: y}, {x: x + ox, y: y}, {x: xm, y: ym - oy}, {x: xm, y: ym}),
-    bottomRight: bezierCurve({x: xm, y: y}, {x: xm, y: y + oy}, {x: x + ox, y: ym}, {x: x, y: ym}),
-    bottomLeft: bezierCurve({x: xm, y: ym}, {x: xm - ox, y: ym}, {x: x, y: y + oy}, {x: x, y: y})
+    topLeft: function topLeft() {
+      return bezierCurve({x: x, y: ym}, {x: x, y: ym - oy}, {x: xm - ox, y: y}, {x: xm, y: y});
+    },
+    topRight: function topRight() {
+      return bezierCurve({x: x, y: y}, {x: x + ox, y: y}, {x: xm, y: ym - oy}, {x: xm, y: ym});
+    },
+    bottomRight: function bottomRight() {
+      return bezierCurve({x: xm, y: y}, {x: xm, y: y + oy}, {x: x + ox, y: ym}, {x: x, y: ym});
+    },
+    bottomLeft: function bottomLeft() {
+      return bezierCurve({x: xm, y: ym}, {x: xm - ox, y: ym}, {x: x, y: y + oy}, {x: x, y: y});
+    }
   };
 }
 
 function calculateCurvePoints(bounds, borderRadius, borders) {
-  var x = bounds.x,
-    y = bounds.y,
-    width = bounds.width,
-    height = bounds.height,
-    tlh = borderRadius[0][0],
-    tlv = borderRadius[0][1],
-    trh = borderRadius[1][0],
-    trv = borderRadius[1][1],
-    brh = borderRadius[2][0],
-    brv = borderRadius[2][1],
-    blh = borderRadius[3][0],
-    blv = borderRadius[3][1];
+  var x = bounds.x;
+  var y = bounds.y;
+  var width = bounds.width;
+  var height = bounds.height;
 
-  var topWidth = width - trh,
-    rightHeight = height - brv,
-    bottomWidth = width - brh,
-    leftHeight = height - blv;
+  var borderRadius_0 = borderRadius[0];
+  var tlh = borderRadius_0[0];
+  var tlv = borderRadius_0[1];
+  var borderRadius_1 = borderRadius[1];
+  var trh = borderRadius_1[0];
+  var trv = borderRadius_1[1];
+  var borderRadius_2 = borderRadius[2];
+  var brh = borderRadius_2[0];
+  var brv = borderRadius_2[1];
+  var borderRadius_3 = borderRadius[3];
+  var blh = borderRadius_3[0];
+  var blv = borderRadius_3[1];
+
+  var topWidth = width - trh; 
+  var rightHeight = height - brv;
+  var bottomWidth = width - brh;
+  var leftHeight = height - blv;
 
   return {
-    topLeftOuter: getCurvePoints(x, y, tlh, tlv).topLeft.subdivide(0.5),
-    topLeftInner: getCurvePoints(x + borders[3].width, y + borders[0].width, Math.max(0, tlh - borders[3].width), Math.max(0, tlv - borders[0].width)).topLeft.subdivide(0.5),
-    topRightOuter: getCurvePoints(x + topWidth, y, trh, trv).topRight.subdivide(0.5),
-    topRightInner: getCurvePoints(x + Math.min(topWidth, width + borders[3].width), y + borders[0].width, (topWidth > width + borders[3].width) ? 0 : trh - borders[3].width, trv - borders[0].width).topRight.subdivide(0.5),
-    bottomRightOuter: getCurvePoints(x + bottomWidth, y + rightHeight, brh, brv).bottomRight.subdivide(0.5),
-    bottomRightInner: getCurvePoints(x + Math.min(bottomWidth, width - borders[3].width), y + Math.min(rightHeight, height + borders[0].width), Math.max(0, brh - borders[1].width), brv - borders[2].width).bottomRight.subdivide(0.5),
-    bottomLeftOuter: getCurvePoints(x, y + leftHeight, blh, blv).bottomLeft.subdivide(0.5),
-    bottomLeftInner: getCurvePoints(x + borders[3].width, y + leftHeight, Math.max(0, blh - borders[3].width), blv - borders[2].width).bottomLeft.subdivide(0.5)
+    topLeftOuter:
+      getCurvePoints(
+        x,
+        y,
+        tlh,
+        tlv
+      )
+      .topLeft().subdivide(0.5),
+    topLeftInner:
+      getCurvePoints(
+        x + borders[3].width,
+        y + borders[0].width,
+        Math.max(0, tlh - borders[3].width),
+        Math.max(0, tlv - borders[0].width)
+      )
+      .topLeft()
+      .subdivide(0.5),
+    topRightOuter:
+      getCurvePoints(
+        x + topWidth,
+        y,
+        trh,
+        trv
+      )
+      .topRight()
+      .subdivide(0.5),
+    topRightInner:
+      getCurvePoints(
+        x + Math.min(topWidth, width + borders[3].width),
+        y + borders[0].width,
+        (topWidth > width + borders[3].width) ? 0 : trh - borders[3].width,
+        trv - borders[0].width
+      )
+      .topRight()
+      .subdivide(0.5),
+    bottomRightOuter: 
+      getCurvePoints(
+        x + bottomWidth,
+        y + rightHeight,
+        brh,
+        brv
+      )
+      .bottomRight()
+      .subdivide(0.5),
+    bottomRightInner:
+      getCurvePoints(
+        x + Math.min(bottomWidth, width - borders[3].width),
+        y + Math.min(rightHeight, height + borders[0].width),
+        Math.max(0, brh - borders[1].width),
+        brv - borders[2].width
+      )
+      .bottomRight()
+      .subdivide(0.5),
+    bottomLeftOuter:
+      getCurvePoints(
+        x,
+        y + leftHeight,
+        blh,
+        blv
+      )
+      .bottomLeft()
+      .subdivide(0.5),
+    bottomLeftInner:
+      getCurvePoints(
+        x + borders[3].width,
+        y + leftHeight,
+        Math.max(0, blh - borders[3].width),
+        blv - borders[2].width
+      )
+      .bottomLeft()
+      .subdivide(0.5)
   };
 }
 
@@ -8811,24 +8872,24 @@ function noLetterSpacing(container) {
 
 function getBorderRadiusData(container, borders, bounds) {
   bounds = bounds || container.parseBounds();
-  return ["TopLeft", "TopRight", "BottomRight", "BottomLeft"].map(function(side) {
-    var value = container.css('border' + side + 'Radius');
-    var arr = value.split(" ");
-    if(arr.length <= 1) {
-      arr[1] = arr[0];
+  return ["TopLeft", "TopRight", "BottomRight", "BottomLeft"].map(function (side) {
+    var value = container.css(("border" + side + "Radius"));
+
+    var dimens = value.split(" ");
+    if(dimens.length === 1) {
+      dimens.push(dimens[0]);
     }
 
-    arr.forEach(function(val) {
-      var size = (arr.indexOf(val) === 0) ? bounds.width : bounds.height;
+    return dimens.map(function (val, i) {
+      var size = i === 0 ? bounds.width : bounds.height;
+      var maxValue = size / 2;
 
-      if(val.indexOf('%') !== -1) {
-        arr[arr.indexOf(val)] = (asFloat(val) / 100) * size;
+      if (val.indexOf("%") !== -1) {
+        return Math.min(size * asFloat(val) / 100, maxValue);
       } else {
-        arr[arr.indexOf(val)] = Math.min(asFloat(val), size / 2);
+        return Math.min(asFloat(val), maxValue);
       }
     });
-
-    return arr.map(asFloat);
   });
 }
 

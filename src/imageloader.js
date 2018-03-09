@@ -118,10 +118,7 @@ module.exports = class ImageLoader {
             log("Timed out loading image", container);
           }
 
-          const dummy = new DummyImageContainer(container.src);
-          return dummy.promise.then(image => {
-            container.image = image;
-          });
+          return (new DummyImageContainer()).promise.then(image => (container.image = image));
         });
   }
   
