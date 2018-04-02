@@ -406,14 +406,13 @@ NodeParser.prototype.paintElement = function(container) {
     }
   }, this);
 
-  this.renderer.clip(container.clip, () => {
-    const imgContainer = this.images.get(container.node);
-    if (imgContainer) {
+  
+  let imgContainer;
+  if (container.node.nodeName == 'svg' && (imgContainer = this.images.get(container.node))) {
+    this.renderer.clip(container.clip, () => {
       this.renderer.renderImage(container, imgContainer.getBounds(bounds), container.borders, imgContainer);
-    } else {
-      log("Error loading <" + container.node.nodeName + ">", container.node);
-    }
-  });
+    });
+  }
 
   this.renderer.clip(container.backgroundClip, function() {
     switch(container.node.nodeName) {

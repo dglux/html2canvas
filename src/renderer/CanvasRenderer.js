@@ -377,7 +377,7 @@ class CanvasRenderer extends Renderer {
           0
         );
 
-        gradientImage.colorStops.forEach(function(colorStop) {
+        gradientImage.colorStops.forEach(colorStop => {
           gradient.addColorStop(colorStop.stop, colorStop.color.toString());
         });
 
@@ -413,7 +413,7 @@ class CanvasRenderer extends Renderer {
       );
     }
 
-    gradientImage.colorStops.forEach(function(colorStop) {
+    gradientImage.colorStops.forEach(colorStop => {
       gradient.addColorStop(colorStop.stop, colorStop.color.toString());
     });
 

@@ -3812,7 +3812,7 @@ module.exports = (function (GradientContainer) {
     GradientContainer.call(this, imageData, container, container.parseBounds());
     var bounds = container.parseBounds();
     
-    this.type = GradientContainer.TYPES.LINEAR;
+    this.type = GradientContainer.TYPES.RADIAL;
 
     var args = imageData.args;
     var hasDirection = args[0].indexOf(this.stepRegExp) === -1;
@@ -8337,14 +8337,13 @@ NodeParser.prototype.paintElement = function(container) {
     }
   }, this);
 
-  this.renderer.clip(container.clip, function () {
-    var imgContainer = this$1.images.get(container.node);
-    if (imgContainer) {
+  
+  var imgContainer;
+  if (container.node.nodeName == 'svg' && (imgContainer = this.images.get(container.node))) {
+    this.renderer.clip(container.clip, function () {
       this$1.renderer.renderImage(container, imgContainer.getBounds(bounds), container.borders, imgContainer);
-    } else {
-      log("Error loading <" + container.node.nodeName + ">", container.node);
-    }
-  });
+    });
+  }
 
   this.renderer.clip(container.backgroundClip, function() {
     switch(container.node.nodeName) {
@@ -9601,7 +9600,7 @@ var CanvasRenderer = (function (Renderer) {
           0
         );
 
-        gradientImage.colorStops.forEach(function(colorStop) {
+        gradientImage.colorStops.forEach(function (colorStop) {
           gradient.addColorStop(colorStop.stop, colorStop.color.toString());
         });
 
@@ -9637,7 +9636,7 @@ var CanvasRenderer = (function (Renderer) {
       );
     }
 
-    gradientImage.colorStops.forEach(function(colorStop) {
+    gradientImage.colorStops.forEach(function (colorStop) {
       gradient.addColorStop(colorStop.stop, colorStop.color.toString());
     });
 

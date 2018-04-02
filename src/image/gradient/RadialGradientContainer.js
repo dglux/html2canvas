@@ -10,7 +10,7 @@ module.exports = class RadialGradientContainer extends GradientContainer {
     super(imageData, container, container.parseBounds());
     const bounds = container.parseBounds();
     
-    this.type = GradientContainer.TYPES.LINEAR;
+    this.type = GradientContainer.TYPES.RADIAL;
 
     let args = imageData.args;
     const hasDirection = args[0].indexOf(this.stepRegExp) === -1;
