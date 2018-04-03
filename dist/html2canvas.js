@@ -9574,8 +9574,14 @@ var CanvasRenderer = (function (Renderer) {
     this.ctx.translate(-offsetX, -offsetY);
   };
 
+  // issue with background gradients rendering in Chrome 65 (but not 67, or 64, hmm)
+  // https://jsfiddle.net/mkbemorL/12/
   CanvasRenderer.prototype.renderBackgroundGradient = function renderBackgroundGradient (gradientImage, bounds) {
     var gradient;
+
+    var scaleX = 1;
+    var scaleY = 1;
+
     if (gradientImage instanceof LinearGradientContainer) {
       gradient = this.ctx.createLinearGradient(
         bounds.x + gradientImage.x0,
@@ -9584,54 +9590,15 @@ var CanvasRenderer = (function (Renderer) {
         bounds.y + gradientImage.y1
       );
     } else if (gradientImage instanceof RadialGradientContainer) {
-      if (
-        typeof gradientImage.scaleX !== "undefined" ||
-        typeof gradientImage.scaleY !== "undefined"
-      ) {
-        gradientImage.scaleX = gradientImage.scaleX || 1;
-        gradientImage.scaleY = gradientImage.scaleY || 1;
-
-        gradient = this.ctx.createRadialGradient(
-          (bounds.x + gradientImage.x0) / gradientImage.scaleX,
-          (bounds.y + gradientImage.y0) / gradientImage.scaleY,
-          gradientImage.r,
-          (bounds.x + gradientImage.x0) / gradientImage.scaleX,
-          (bounds.y + gradientImage.y0) / gradientImage.scaleY,
-          0
-        );
-
-        gradientImage.colorStops.forEach(function (colorStop) {
-          gradient.addColorStop(colorStop.stop, colorStop.color.toString());
-        });
-
-        var currentTransform = this.ctx.currentTransform;
-        this.ctx.setTransform(
-          gradientImage.scaleX * this.scale,
-          0,
-          0,
-          gradientImage.scaleY * this.scale,
-          0,
-          0
-        );
-        this.rectangle(
-          bounds.x / gradientImage.scaleX,
-          bounds.y / gradientImage.scaleY,
-          bounds.width,
-          bounds.height,
-          gradient
-        );
-
-        // reset the old transform
-        this.ctx.currentTransform = currentTransform;
-        return;
-      }
+      scaleX = gradientImage.scaleX || 1;
+      scaleY = gradientImage.scaleY || 1;
 
       gradient = this.ctx.createRadialGradient(
-        bounds.x + gradientImage.x0,
-        bounds.y + gradientImage.y0,
+        (bounds.x + gradientImage.x0) / scaleX,
+        (bounds.y + gradientImage.y0) / scaleY,
         gradientImage.r,
-        bounds.x + gradientImage.x0,
-        bounds.y + gradientImage.y0,
+        (bounds.x + gradientImage.x0) / scaleX,
+        (bounds.y + gradientImage.y0) / scaleY,
         0
       );
     }
@@ -9640,7 +9607,20 @@ var CanvasRenderer = (function (Renderer) {
       gradient.addColorStop(colorStop.stop, colorStop.color.toString());
     });
 
-    this.rectangle(bounds.x, bounds.y, bounds.width, bounds.height, gradient);
+    this.ctx.save();
+
+    this.ctx.setTransform(
+      scaleX * this.scale,
+      0,
+      0,
+      scaleY * this.scale,
+      0,
+      0
+    );
+
+    this.rectangle(bounds.x / scaleX, bounds.y / scaleY, bounds.width, bounds.height, gradient);
+
+    this.ctx.restore();
   };
 
   CanvasRenderer.prototype.resizeImage = function resizeImage (imageContainer, size) {
