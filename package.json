@@ -28,10 +28,12 @@
     "bubleify": "^1.0.0",
     "derequire": "^2.0.6",
     "serve": "^6.4.1",
+    "uglify-js": "^3.3.28",
     "watchify": "^3.7.0"
   },
   "scripts": {
     "build": "node dev.js",
+	"build_release": "node dev.js && uglifyjs -o dist/html2canvas.min.js dist/html2canvas.js",
     "watch": "node dev.js watch"
   },
   "homepage": "http://html2canvas.hertzen.com",
