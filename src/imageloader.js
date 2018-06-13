@@ -1,4 +1,6 @@
+/* jshint -W079 */
 const { Promise } = require("./polyfill");
+/* jshint +W079 */
 const { promiseTimeout } = require("./utils");
 const log = require("./log");
 
@@ -15,13 +17,13 @@ const { isSVG } = require("./image/svg/utils");
 
 function hasImageBackground(imageData) {
   return imageData.method !== "none";
-};
+}
 
 function imageExists(images, src) {
   return images.some(image => {
     return image.src === src;
   });
-};
+}
 
 module.exports = class ImageLoader {
   constructor(options, support) {
@@ -163,4 +165,4 @@ module.exports = class ImageLoader {
   
     return this;
   }
-}
+};

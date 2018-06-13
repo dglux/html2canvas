@@ -1,4 +1,6 @@
+/* jshint -W079 */
 const { Map } = require("../polyfill");
+/* jshint +W079 */
 const Renderer = require("./Renderer");
 const LinearGradientContainer = require("../image/gradient/LinearGradientContainer");
 const RadialGradientContainer = require("../image/gradient/RadialGradientContainer");
@@ -27,6 +29,7 @@ class CanvasRenderer extends Renderer {
     super(width, height, imageLoader, options);
 
     this.canvas = this.options.canvas || document.createElement("canvas");
+    /*global devicePixelRatio */
     this.scale = devicePixelRatio * (options.scale || 1);
 
     if (!this.options.canvas) {
@@ -63,9 +66,7 @@ class CanvasRenderer extends Renderer {
 
   setFillStyle(fillStyle) {
     this.ctx.fillStyle =
-      typeof fillStyle === "object" && !!fillStyle.isColor
-        ? fillStyle.toString()
-        : fillStyle;
+      typeof fillStyle === "object" && !!fillStyle.isColor ? fillStyle.toString() : fillStyle;
 
     return this.ctx;
   }

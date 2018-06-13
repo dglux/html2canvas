@@ -38,7 +38,7 @@ function parseBoxShadows(container) {
   }
 
   return results;
-};
+}
 
 module.exports = {
   parseBoxShadows

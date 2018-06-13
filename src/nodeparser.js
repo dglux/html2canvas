@@ -408,7 +408,7 @@ NodeParser.prototype.paintElement = function(container) {
 
   
   let imgContainer;
-  if (container.node.nodeName == 'svg' && (imgContainer = this.images.get(container.node))) {
+  if (container.node.nodeName === 'svg' && (imgContainer = this.images.get(container.node))) {
     this.renderer.clip(container.clip, () => {
       this.renderer.renderImage(container, imgContainer.getBounds(bounds), container.borders, imgContainer);
     });

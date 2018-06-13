@@ -57,7 +57,7 @@ BoundingBox.prototype.addPoint = function(x, y) {
     if(y < this.y1) this.y1 = y;
     if(y > this.y2) this.y2 = y;
   }
-}
+};
 
 BoundingBox.prototype.inflate = function(paddingX, paddingY) {
   paddingY = paddingY || paddingX;
@@ -68,7 +68,7 @@ BoundingBox.prototype.inflate = function(paddingX, paddingY) {
   this.y2 += paddingY;
 
   return this;
-}
+};
 
 BoundingBox.prototype.multScalar = function(scalar) {
   const dx = this.width * (scalar - 1) / 2;

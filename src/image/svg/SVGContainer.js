@@ -1,4 +1,7 @@
+/*global devicePixelRatio */
+/* jshint -W079 */
 const { Promise } = require("../../polyfill");
+/* jshint +W079 */
 const { promiseDeferred } = require("../../utils");
 const BoundingBox = require("../../BoundingBox");
 const XHR = require("../../xhr");
@@ -79,4 +82,4 @@ module.exports = class SVGContainer extends BaseImageContainer {
 
     return nb;
   }
-}
+};

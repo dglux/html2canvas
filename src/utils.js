@@ -1,5 +1,7 @@
 const BoundingBox = require("./BoundingBox");
+/* jshint -W079 */
 const { Promise } = require("./polyfill");
+/* jshint +W079 */
 
 exports.promiseDeferred = () => {
   let _resolve;

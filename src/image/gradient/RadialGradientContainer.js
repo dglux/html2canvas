@@ -119,4 +119,4 @@ module.exports = class RadialGradientContainer extends GradientContainer {
       }
     });
   }
-}
+};

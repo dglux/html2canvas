@@ -1,8 +1,8 @@
 module.exports = class BaseImageContainer {
   constructor() {
-    this.src; // string
-    !this.tainted; // boolean, default false
-    this.promise; // Promise<Image>
-    this.image; // Image
+    this.src = null; // string
+    this.tainted = false; // boolean, default false
+    this.promise = null; // Promise<Image>
+    this.image = null; // Image
   }
 };

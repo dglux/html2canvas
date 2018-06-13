@@ -8,11 +8,11 @@ function inlineFormatting(src) {
 
 function removeContentType(src) {
   return src.replace(/^data:image\/svg\+xml(;base64)?,/, '');
-};
+}
 
 function isInline(src) {
   return (/^data:image\/svg\+xml/i.test(src));
-};
+}
 
 module.exports = {
   isSVG,

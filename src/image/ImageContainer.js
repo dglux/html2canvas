@@ -1,4 +1,6 @@
+/* jshint -W079 */
 const { Promise } = require("../polyfill");
+/* jshint +W079 */
 
 const BaseImageContainer = require("./BaseImageContainer");
 
@@ -23,4 +25,4 @@ module.exports = class ImageContainer extends BaseImageContainer {
       }
     });
   }
-}
+};

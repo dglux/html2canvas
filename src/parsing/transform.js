@@ -91,9 +91,7 @@ function parseTransformOrigin(container) {
 
 function parseTransformMatrix(container) {
   const transform = container.prefixedCss("transform");
-  const matrix = !!transform
-      ? parseMatrix(transform.match(MATRIX_PROPERTY))
-      : null;
+  const matrix = !!transform ? parseMatrix(transform.match(MATRIX_PROPERTY)) : null;
 
   return matrix || identityMatrix();
 }

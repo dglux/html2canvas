@@ -147,4 +147,4 @@ module.exports = class LinearGradientContainer extends GradientContainer {
       }
     });
   }
-}
+};

@@ -24,7 +24,7 @@ function getDocWidth(node, isDGLux) {
 
   const hasScroll = !isDGLux ||
     (node.ownerDocument.body.children[0].style.overflowX !== 'hidden' &&
-      (!dgPage || dgPage.style.overflowX != 'hidden'));
+      (!dgPage || dgPage.style.overflowX !== 'hidden'));
 
   let arr = [
     node.clientWidth,
@@ -67,7 +67,7 @@ function getDocHeight(node, isDGLux) {
 
   const hasScroll = !isDGLux ||
     (node.ownerDocument.body.children[0].style.overflowY !== 'hidden' &&
-      (!dgPage || dgPage.style.overflowY != 'hidden'));
+      (!dgPage || dgPage.style.overflowY !== 'hidden'));
 
   let arr = [
     node.clientHeight,
@@ -170,7 +170,7 @@ function html2canvas(nodeList, options) {
   if (options.isDGLux) {
     var dgPage = getDGPage(node);
 
-    if (!!dgPage && dgPage.style.overflowY == "scroll" && dgPage.scrollHeight > dgPage.clientHeight) {
+    if (!!dgPage && dgPage.style.overflowY === "scroll" && dgPage.scrollHeight > dgPage.clientHeight) {
       const ratio = dgPage.clientHeight / dgPage.scrollHeight;
       Array.prototype.slice.call(dgPage.children).forEach(childNode => {
         if (childNode.style.height.indexOf("%") > 0) {
@@ -179,7 +179,7 @@ function html2canvas(nodeList, options) {
       });
     }
 
-    if (!!dgPage && dgPage.style.overflowY == "scroll" && dgPage.scrollWidth > dgPage.clientWidth) {
+    if (!!dgPage && dgPage.style.overflowY === "scroll" && dgPage.scrollWidth > dgPage.clientWidth) {
       const ratio = dgPage.clientWidth / dgPage.scrollWidth;
       Array.prototype.slice.call(dgPage.children).forEach(childNode => {
         if (childNode.style.width.indexOf("%") > 0) {

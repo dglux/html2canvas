@@ -1,4 +1,6 @@
+/* jshint -W079 */
 const { Promise } = require("../polyfill");
+/* jshint +W079 */
 const html2canvas = require("../");
 
 const BaseImageContainer = require("./BaseImageContainer");
@@ -34,4 +36,4 @@ module.exports = class FrameContainer extends BaseImageContainer {
       });
     }).then(canvas => (this.image = canvas));
   }
-}
+};
